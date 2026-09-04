@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Checkout — ACH Boutique</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+#checkoutModalBg{position:static !important;background:none !important;opacity:1 !important;pointer-events:auto !important;padding:0 !important;display:block !important;}
+#checkoutModalBg .modal{max-width:640px;margin:0 auto;box-shadow:0 10px 40px rgba(58,46,56,0.08);border-radius:20px;border:1px solid var(--stone);}
+#checkoutModalBg .modal-close{display:none;}
+</style>
+</head>
+<body>
+
+<div id="chrome-header"></div>
+
+<div class="page-wrap">
+  <div class="breadcrumb"><a href="index.html">Shop</a> / <a href="cart.html">Bag</a> / Checkout</div>
+  <div id="checkoutRoot">
+    <div class="modal-bg" id="checkoutModalBg"><div class="modal" id="checkoutModal"></div></div>
+  </div>
+</div>
+
+<div id="chrome-footer"></div>
+<div id="chrome-overlays"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>emailjs.init('I4iWZBJq_43MymLwS');</script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="shared.js"></script>
+<script src="chrome.js"></script>
+<script>
+injectSharedChrome();
+(function(){
+  const overlayCheckout = document.querySelectorAll('#chrome-overlays #checkoutModalBg');
+  if(overlayCheckout.length) overlayCheckout[0].id = 'checkoutModalBgMini';
+})();
+init();
+function onProductsLoaded(){
+  if(cart.length===0){
+    document.getElementById('checkoutRoot').innerHTML = `<div class="empty-page">
+      <h2 style="margin-bottom:10px;">Your bag is empty</h2>
+      <p style="margin-bottom:20px;">Add something you love before checking out.</p>
+      <a class="btn" href="index.html">Continue Shopping</a>
+    </div>`;
+    return;
+  }
+  renderCheckoutStep1();
+  document.getElementById('checkoutModalBg').classList.add('show');
+}
+</script>
+
+</body>
+</html>

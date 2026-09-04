@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Account — ACH Boutique</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+#wishModalBg{position:static !important;background:none !important;opacity:1 !important;pointer-events:auto !important;padding:0 !important;display:block !important;}
+#wishModalBg .modal{max-width:640px;margin:0 auto;box-shadow:0 10px 40px rgba(58,46,56,0.08);border-radius:20px;border:1px solid var(--stone);}
+#wishModalBg .modal-close{display:none;}
+</style>
+</head>
+<body>
+
+<div id="chrome-header"></div>
+
+<div class="page-wrap">
+  <div class="breadcrumb"><a href="index.html">Shop</a> / My Account</div>
+  <div id="accountRoot">
+    <div class="modal-bg" id="wishModalBg"><div class="modal" id="wishModal">
+      <div style="padding:60px;text-align:center;color:#8a7480;"><div class="spinner-sm" style="margin:0 auto 14px;"></div>Loading your account…</div>
+    </div></div>
+  </div>
+</div>
+
+<div id="chrome-footer"></div>
+<div id="chrome-overlays"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>emailjs.init('I4iWZBJq_43MymLwS');</script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="shared.js"></script>
+<script src="chrome.js"></script>
+<script>
+injectSharedChrome();
+(function(){
+  const overlayWish = document.querySelectorAll('#chrome-overlays #wishModalBg');
+  if(overlayWish.length) overlayWish[0].id = 'wishModalBgMini';
+})();
+init();
+let _acctHandled = false;
+function onAuthReady(user){
+  if(_acctHandled) return;
+  _acctHandled = true;
+  if(user){ openSignedInPanel(); }
+  else { window.location.href = 'login.html'; }
+}
+</script>
+
+</body>
+</html>

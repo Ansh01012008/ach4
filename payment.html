@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="refresh" content="0; url=checkout.html">
+<title>Payment — ACH Boutique</title>
+</head>
+<body>
+<!-- Payment selection is step 3 of the checkout stepper (address → verify → payment → confirm).
+     It depends on the shipping details entered in the earlier steps, so it can't be entered
+     directly on its own without that context — redirecting into the live checkout flow. -->
+<p>Redirecting to <a href="checkout.html">Checkout</a>…</p>
+<script>window.location.replace('checkout.html');</script>
+</body>
+</html>

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Order Confirmation — ACH Boutique</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+.confirm-box{max-width:560px;margin:20px auto 0;border:1px solid var(--stone);border-radius:20px;padding:44px 40px;text-align:center;box-shadow:0 10px 40px rgba(58,46,56,0.06);}
+.confirm-items{text-align:left;border-top:1px solid var(--stone);margin-top:24px;padding-top:20px;}
+.confirm-row{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;}
+</style>
+</head>
+<body>
+
+<div id="chrome-header"></div>
+
+<div class="page-wrap" style="max-width:640px;">
+  <div class="breadcrumb"><a href="index.html">Shop</a> / Order Confirmation</div>
+  <div id="confirmRoot" class="confirm-box">
+    <div class="spinner-sm" style="margin:0 auto 14px;"></div>Fetching your order…
+  </div>
+</div>
+
+<div id="chrome-footer"></div>
+<div id="chrome-overlays"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>emailjs.init('I4iWZBJq_43MymLwS');</script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="shared.js"></script>
+<script src="chrome.js"></script>
+<script>
+injectSharedChrome();
+init();
+
+async function loadConfirmation(){
+  const id = new URLSearchParams(window.location.search).get('order');
+  const root = document.getElementById('confirmRoot');
+  if(!id){
+    root.innerHTML = `<h2 style="margin-bottom:10px;">No order specified</h2><p style="color:#8a7480;margin-bottom:20px;">Check the link and try again.</p><a class="btn" href="index.html">Back to Shop</a>`;
+    return;
+  }
+  try{
+    const snap = await db.collection('orders').doc(id).get();
+    if(!snap.exists){
+      root.innerHTML = `<h2 style="margin-bottom:10px;">Order not found</h2><p style="color:#8a7480;margin-bottom:20px;">We couldn't find an order with ID <b>${id}</b>.</p><a class="btn" href="track.html">Track an Order</a>`;
+      return;
+    }
+    const o = snap.data();
+    root.innerHTML = `
+      <div style="font-size:40px;margin-bottom:14px;">✓</div>
+      <h2 style="margin-bottom:8px;">Order Confirmed</h2>
+      <p style="font-size:14px;color:#6b5865;margin-bottom:4px;">Thank you for shopping with ACH Boutique.</p>
+      <p style="font-size:13px;color:#8a7480;">Order ID: <b>${id}</b></p>
+      <p style="font-size:13px;color:#8a7480;margin-bottom:10px;">${new Date(o.date).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})} · ${o.payment}${o.paymentStatus?' · '+o.paymentStatus:''}</p>
+      <div class="confirm-items">
+        ${o.items.map(i=>`<div class="confirm-row"><span>${i.name} (${i.size}) x${i.qty}</span><span>${money(i.price*i.qty)}</span></div>`).join('')}
+        ${o.discount>0?`<div class="confirm-row" style="color:var(--moss);"><span>Coupon${o.coupon?' ('+o.coupon+')':''}</span><span>−${money(o.discount)}</span></div>`:''}
+        <div class="confirm-row"><span>Shipping</span><span>${o.shipping===0?'Free':money(o.shipping)}</span></div>
+        ${o.gstApplied?`<div class="confirm-row"><span>GST</span><span>${money(o.gst)}</span></div>`:''}
+        <div class="confirm-row" style="font-weight:600;border-top:1px solid var(--stone);padding-top:10px;margin-top:6px;"><span>Total</span><span>${money(o.total)}</span></div>
+      </div>
+      <div style="margin-top:26px;display:flex;gap:10px;">
+        <a class="btn btn-outline" style="flex:1;text-align:center;" href="track.html">Track Order</a>
+        <a class="btn" style="flex:1;text-align:center;" href="index.html">Continue Shopping</a>
+      </div>`;
+  }catch(e){
+    root.innerHTML = `<h2 style="margin-bottom:10px;">Couldn't load this order</h2><p style="color:#8a7480;">Please try again shortly, or track it from the Track Order page.</p>`;
+  }
+}
+loadConfirmation();
+</script>
+
+</body>
+</html>

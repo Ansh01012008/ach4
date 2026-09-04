@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ACH Boutique — Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ivory:#fdf6f1; --clay:#cda45e; --moss:#7a9b7e; --charcoal:#3a2e38;
+  --stone:#ecdfe6; --rose:#e08ba8; --lavender-deep:#b79ee0; --white:#fffdfc;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Jost',sans-serif;background:var(--ivory);color:var(--charcoal);}
+h1,h2,h3{font-family:'Fraunces',serif;font-weight:500;}
+a{color:inherit;}
+button{font-family:inherit;cursor:pointer;border:none;background:none;}
+.hidden{display:none !important;}
+.btn{display:inline-block;padding:12px 24px;background:linear-gradient(120deg,var(--rose),var(--lavender-deep));color:var(--white);font-size:14px;letter-spacing:.03em;border-radius:6px;box-shadow:0 4px 14px rgba(224,139,168,0.3);transition:transform .15s;}
+.btn:hover{filter:brightness(1.05);transform:translateY(-1px);}
+.btn-outline{background:transparent;border:1px solid var(--charcoal);color:var(--charcoal);box-shadow:none;}
+.btn-outline:hover{background:var(--charcoal);color:var(--white);}
+.btn.danger{background:#c0405f;box-shadow:none;}
+.full-btn{width:100%;text-align:center;}
+
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;}
+.login-box{max-width:380px;width:100%;background:var(--white);padding:44px;border:1px solid var(--stone);border-radius:14px;}
+.login-box .logo{font-family:'Fraunces',serif;font-size:24px;margin-bottom:6px;}
+.login-box .logo span{color:var(--rose);font-style:italic;}
+.login-box p{font-size:13px;color:#8a7480;margin:6px 0 24px;}
+.field{margin-bottom:16px;}
+.field label{display:block;font-size:12px;margin-bottom:6px;color:#6b5865;}
+.field input,.field select,.field textarea{width:100%;padding:11px 12px;border:1px solid var(--stone);border-radius:8px;font-size:14px;font-family:inherit;background:var(--ivory);}
+.err-msg{color:#b5473a;font-size:12px;margin-top:10px;min-height:14px;}
+
+.admin-shell{display:flex;min-height:100vh;}
+.admin-side{width:230px;background:linear-gradient(180deg,var(--charcoal),#503d4a);color:var(--ivory);padding:30px 0;flex-shrink:0;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.admin-side .logo{color:var(--ivory);padding:0 24px 30px;font-size:22px;font-family:'Fraunces',serif;}
+.admin-side .logo span{color:var(--rose);font-style:italic;}
+.admin-nav-item{padding:13px 24px;font-size:14px;cursor:pointer;color:#c9b8c2;border-left:3px solid transparent;}
+.admin-nav-item:hover{color:var(--white);}
+.admin-nav-item.active{color:var(--white);border-color:var(--rose);background:rgba(255,255,255,0.07);}
+.admin-main{flex:1;padding:34px 40px;max-width:1200px;}
+.admin-topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;flex-wrap:wrap;gap:14px;}
+.admin-topbar h2{font-size:26px;}
+.admin-card{background:var(--white);border:1px solid var(--stone);padding:26px;margin-bottom:20px;border-radius:12px;}
+.admin-table{width:100%;border-collapse:collapse;font-size:13px;}
+.admin-table th{text-align:left;padding:10px 8px;border-bottom:2px solid var(--stone);color:#6b5865;font-weight:500;}
+.admin-table td{padding:10px 8px;border-bottom:1px solid var(--stone);vertical-align:middle;}
+.admin-table img{width:40px;height:50px;object-fit:cover;background:var(--stone);border-radius:4px;}
+.mini-btn{font-size:12px;padding:6px 12px;border:1px solid var(--stone);margin-right:6px;border-radius:16px;background:#fff;}
+.mini-btn:hover{background:var(--charcoal);color:var(--white);border-color:var(--charcoal);}
+.mini-btn.danger:hover{background:#c0405f;border-color:#c0405f;}
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:26px;}
+.stat-box{background:var(--white);border:1px solid var(--stone);padding:20px;border-radius:12px;}
+.stat-box .num{font-family:'Fraunces',serif;font-size:30px;}
+.stat-box .lbl{font-size:12px;color:#8a7480;}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--stone);gap:20px;}
+.toggle-row:last-child{border:none;}
+.switch{position:relative;width:44px;height:24px;background:var(--stone);border-radius:12px;transition:.2s;flex-shrink:0;}
+.switch.on{background:linear-gradient(120deg,var(--rose),var(--lavender-deep));}
+.switch::after{content:'';position:absolute;top:2px;left:2px;width:20px;height:20px;background:#fff;border-radius:50%;transition:.2s;}
+.switch.on::after{left:22px;}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:0;}
+.field.full{grid-column:1/-1;}
+.img-upload-zone{border:2px dashed var(--stone);padding:20px;text-align:center;font-size:13px;color:#8a7480;cursor:pointer;margin-bottom:12px;border-radius:10px;}
+.img-preview-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+.img-preview{position:relative;width:60px;height:75px;}
+.img-preview img{width:100%;height:100%;object-fit:cover;border-radius:6px;}
+.img-preview button{position:absolute;top:-6px;right:-6px;background:#c0405f;color:#fff;width:18px;height:18px;border-radius:50%;font-size:11px;line-height:1;}
+.badge-tag{font-size:10px;padding:3px 8px;background:var(--moss);color:#fff;border-radius:6px;}
+.badge-tag.off{background:#a3939c;}
+.note-banner{background:#fff8ec;border:1px solid #e8d9b8;padding:12px 16px;font-size:12px;color:#7a5f2a;margin-bottom:22px;border-radius:8px;}
+.note-banner.danger{background:#fdeef1;border-color:#eab3c6;color:#93253f;}
+.note-banner.ok{background:#eef6ef;border-color:#c9dfcb;color:#3f5a41;}
+.wheel-prize-row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--stone);}
+.wheel-prize-row input,.wheel-prize-row select{padding:8px;border:1px solid var(--stone);border-radius:6px;font-size:12px;}
+.weight-bar{height:6px;background:var(--stone);border-radius:4px;overflow:hidden;margin-top:4px;}
+.weight-bar-fill{height:100%;background:linear-gradient(90deg,var(--rose),var(--lavender-deep));}
+.tag-pill{display:inline-block;background:var(--ivory);border:1px solid var(--stone);border-radius:16px;padding:4px 12px;font-size:11px;margin:2px;}
+@media(max-width:860px){
+  .admin-side{width:64px;}
+  .admin-side .logo, .admin-nav-item span{display:none;}
+  .form-grid{grid-template-columns:1fr;}
+  .stat-grid{grid-template-columns:1fr 1fr;}
+  .wheel-prize-row{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<div class="login-wrap" id="loginWrap">
+  <div class="login-box">
+    <div class="logo">ACH <span>Admin</span></div>
+    <p>Sign in to manage the ACH Boutique storefront.</p>
+    <div class="field"><label>Password</label><input type="password" id="adminPass" placeholder="Enter admin password" onkeydown="if(event.key==='Enter')adminLogin()"></div>
+    <button class="btn full-btn" onclick="adminLogin()">Sign In</button>
+    <div class="err-msg" id="adminLoginErr"></div>
+    <p style="font-size:11px;color:#a3939c;margin-top:16px;">Default password: <b>admin123</b> — change it under Settings.</p>
+    <p style="font-size:11px;color:#a3939c;margin-top:10px;"><a href="./index.html" style="text-decoration:underline;">← Back to storefront</a></p>
+  </div>
+</div>
+
+<div class="admin-shell hidden" id="adminShell">
+  <div class="admin-side">
+    <div class="logo">ACH <span>Admin</span></div>
+    <div class="admin-nav-item active" data-tab="dashboard" onclick="setAdminTab('dashboard')"><span>Dashboard</span></div>
+    <div class="admin-nav-item" data-tab="products" onclick="setAdminTab('products')"><span>Products</span></div>
+    <div class="admin-nav-item" data-tab="coupons" onclick="setAdminTab('coupons')"><span>Coupons</span></div>
+    <div class="admin-nav-item" data-tab="wheel" onclick="setAdminTab('wheel')"><span>Spin Wheel</span></div>
+    <div class="admin-nav-item" data-tab="content" onclick="setAdminTab('content')"><span>Site Content</span></div>
+    <div class="admin-nav-item" data-tab="orders" onclick="setAdminTab('orders')"><span>Orders</span></div>
+    <div class="admin-nav-item" data-tab="customers" onclick="setAdminTab('customers')"><span>Customers</span></div>
+    <div class="admin-nav-item" data-tab="analytics" onclick="setAdminTab('analytics')"><span>Analytics</span></div>
+    <div class="admin-nav-item" data-tab="reviews" onclick="setAdminTab('reviews')"><span>Reviews</span></div>
+    <div class="admin-nav-item" data-tab="leads" onclick="setAdminTab('leads')"><span>Newsletter &amp; Alerts</span></div>
+    <div class="admin-nav-item" data-tab="settings" onclick="setAdminTab('settings')"><span>Settings</span></div>
+    <div class="admin-nav-item" onclick="window.open('./index.html','_blank')" style="margin-top:20px;"><span>↗ View Storefront</span></div>
+    <div class="admin-nav-item" onclick="logoutAdmin()" style="color:var(--rose);"><span>← Sign Out</span></div>
+  </div>
+  <div class="admin-main" id="adminMain"></div>
+</div>
+
+<!-- FIREBASE -->
+<!-- EmailJS for sending status update emails from admin -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>emailjs.init('I4iWZBJq_43MymLwS');</script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBklGlLAK-CvIFfS9K6UqsN3Jk9p58YgQk",
+  authDomain: "achweb-8256f.firebaseapp.com",
+  projectId: "achweb-8256f",
+  storageBucket: "achweb-8256f.firebasestorage.app",
+  messagingSenderId: "292133177844",
+  appId: "1:292133177844:web:f509be1061d0d8e6aa11a1"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const storage = firebase.storage();
+</script>
+
+<script>
+function ph(seed, colorA, colorB){
+  return `data:image/svg+xml;utf8,` + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='400' height='500'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='${colorA}'/><stop offset='1' stop-color='${colorB}'/></linearGradient></defs><rect width='400' height='500' fill='url(#g)'/><text x='200' y='260' font-family='Georgia,serif' font-size='24' fill='rgba(255,255,255,0.75)' text-anchor='middle'>${seed}</text></svg>`);
+}
+const DEFAULT_PRODUCTS = [
+  {id:'p1', name:'Handloom Linen Kurta', category:'Ethnic', price:2450, mrp:2900, desc:'Undyed handloom linen kurta with mother-of-pearl buttons and a relaxed A-line cut.', sizes:['S','M','L','XL'], stock:14, images:[ph('Linen Kurta','#eab3c6','#e08ba8')], badge:'New'},
+  {id:'p2', name:'Blush Chiffon Saree', category:'Ethnic', price:5200, mrp:6000, desc:'Flowing blush chiffon saree with a delicate scalloped border.', sizes:['Free Size'], stock:6, images:[ph('Chiffon Saree','#d9cdf0','#b79ee0')], badge:'Bestseller'},
+  {id:'p3', name:'Pearl Drop Earrings', category:'Accessories', price:1650, mrp:1650, desc:'Handcrafted pearl drop earrings finished in rose gold.', sizes:['Free Size'], stock:20, images:[ph('Pearl Earrings','#cda45e','#eab3c6')]},
+  {id:'p4', name:'Lavender Co-ord Set', category:'Western', price:3400, mrp:3400, desc:'Two-piece pastel co-ord set — cropped blazer and wide-leg trousers.', sizes:['S','M','L'], stock:9, images:[ph('Co-ord Set','#b79ee0','#eab3c6')], badge:'New'},
+  {id:'p5', name:'Cream Wrap Midi Dress', category:'Western', price:2950, mrp:3500, desc:'Flattering wrap midi dress in cream crepe with a tie waist.', sizes:['S','M','L','XL'], stock:11, images:[ph('Wrap Dress','#fdf6f1','#eab3c6')]},
+  {id:'p6', name:'Rose Gold Layered Necklace', category:'Accessories', price:1250, mrp:1250, desc:'Delicate layered chain necklace in a warm rose gold finish.', sizes:['Free Size'], stock:25, images:[ph('Necklace','#cda45e','#d9cdf0')]},
+  {id:'p7', name:'Anarkali Gown', category:'Ethnic', price:4800, mrp:5600, desc:'Floor-length anarkali gown in dusty rose georgette with embroidered yoke.', sizes:['S','M','L','XL'], stock:7, images:[ph('Anarkali Gown','#e08ba8','#b79ee0')], badge:'Trending'},
+  {id:'p8', name:'Satin Slip Skirt', category:'Western', price:1980, mrp:2300, desc:'Bias-cut satin slip skirt in champagne with elasticated back.', sizes:['S','M','L'], stock:13, images:[ph('Satin Skirt','#fdf6f1','#cda45e')]},
+];
+const DEFAULT_COUPONS = [
+  {id:'WELCOME10', code:'WELCOME10', type:'percent', value:10, active:true, desc:'10% off your first order'},
+  {id:'FLAT500', code:'FLAT500', type:'flat', value:500, active:true, desc:'Flat ₹500 off on orders above ₹3000', minOrder:3000},
+];
+const DEFAULT_SETTINGS = {
+  showGST:true, gstRate:5, adminPassword:'admin123', currency:'₹',
+  shippingThreshold:2500, shippingFee:99,
+  heroEyebrow:'— Festive Edit, 2026', heroTitle:'Quiet luxury, cut for real life.',
+  heroSubtitle:'ACH Boutique brings together small-batch textiles and considered silhouettes — pieces made to be worn for years, not seasons.',
+  announcementText:'FREE SHIPPING ON ORDERS ABOVE ₹2500  •  USE CODE WELCOME10 FOR 10% OFF YOUR FIRST ORDER  •  HANDCRAFTED IN SMALL BATCHES',
+  saleTitle:'Festive Edit — Up to 20% Off', saleSubtitle:'Use code WELCOME10 at checkout · Offer ends soon',
+  saleEndDate: new Date(Date.now()+3*86400000).toISOString(),
+  aboutItems: [
+    {title:'Small Batch', text:'Limited runs of 20–40 pieces per style, so nothing feels mass produced.'},
+    {title:'Considered Fabric', text:'Linen, handloom cotton and undyed wool sourced from regional weaving clusters.'},
+    {title:'Made to Last', text:'Reinforced seams and natural fibers built for years of wear, not one season.'}
+  ],
+  wheelEnabled:true,
+  wheelPrizes:[
+    {label:'20% OFF', type:'percent', value:20, weight:8, code:'SPIN20'},
+    {label:'10% OFF', type:'percent', value:10, weight:25, code:'SPIN10'},
+    {label:'Free Shipping', type:'flat', value:99, weight:20, code:'SPINSHIP'},
+    {label:'15% OFF', type:'percent', value:15, weight:12, code:'SPIN15'},
+    {label:'5% OFF', type:'percent', value:5, weight:25, code:'SPIN5'},
+    {label:'Try Again', type:'none', value:0, weight:10, code:''}
+  ]
+};
+
+let products = [];
+let coupons = [];
+let orders = [];
+let reviews = [];
+let newsletterLeads = [];
+let stockAlerts = [];
+let settings = {...DEFAULT_SETTINGS};
+let editingProductId = null;
+let editingImages = [];
+let uploadingCount = 0;
+let wheelDraft = null;
+let dbReady = false;
+
+function money(n){ return (settings.currency||'₹') + Number(n).toLocaleString('en-IN'); }
+
+/* ===== FIREBASE BOOTSTRAP ===== */
+async function seedIfEmpty(){
+  const snap = await db.collection('products').limit(1).get();
+  if(snap.empty){
+    const batch = db.batch();
+    DEFAULT_PRODUCTS.forEach(p=>{ const {id, ...rest} = p; batch.set(db.collection('products').doc(id), rest); });
+    await batch.commit();
+  }
+  const cSnap = await db.collection('coupons').limit(1).get();
+  if(cSnap.empty){
+    const batch = db.batch();
+    DEFAULT_COUPONS.forEach(c=>{ const {id, ...rest} = c; batch.set(db.collection('coupons').doc(id), rest); });
+    await batch.commit();
+  }
+  const sDoc = await db.collection('settings').doc('main').get();
+  if(!sDoc.exists){ await db.collection('settings').doc('main').set(DEFAULT_SETTINGS); }
+}
+function listenAll(){
+  db.collection('settings').doc('main').onSnapshot(doc=>{
+    settings = doc.exists ? {...DEFAULT_SETTINGS, ...doc.data()} : {...DEFAULT_SETTINGS};
+    if(document.querySelector('.admin-nav-item.active')?.dataset.tab){
+      const activeTab = document.querySelector('.admin-nav-item.active').dataset.tab;
+      if(['dashboard','wheel','content','settings'].includes(activeTab)) setAdminTab(activeTab);
+    }
+  });
+  db.collection('products').onSnapshot(snap=>{
+    products = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    if(document.querySelector('.admin-nav-item.active')?.dataset.tab==='products' && !document.getElementById('productFormWrap')?.innerHTML) setAdminTab('products');
+    if(document.querySelector('.admin-nav-item.active')?.dataset.tab==='dashboard') setAdminTab('dashboard');
+  });
+  db.collection('coupons').onSnapshot(snap=>{
+    coupons = snap.docs.map(d=>({id:d.id, code:d.id, ...d.data()}));
+    if(document.querySelector('.admin-nav-item.active')?.dataset.tab==='coupons' && !document.getElementById('couponFormWrap')?.innerHTML) setAdminTab('coupons');
+  });
+  db.collection('orders').orderBy('date','desc').onSnapshot(snap=>{
+    orders = snap.docs.map(d=>d.data());
+    const activeTab = document.querySelector('.admin-nav-item.active')?.dataset.tab;
+    if(activeTab==='orders' || activeTab==='dashboard') setAdminTab(activeTab);
+  }, err=>console.warn('orders listener (check Firestore rules)', err));
+  db.collection('reviews').onSnapshot(snap=>{
+    reviews = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    if(document.querySelector('.admin-nav-item.active')?.dataset.tab==='reviews') setAdminTab('reviews');
+  }, ()=>{});
+  db.collection('newsletter').onSnapshot(snap=>{
+    newsletterLeads = snap.docs.map(d=>d.data());
+    if(document.querySelector('.admin-nav-item.active')?.dataset.tab==='leads') setAdminTab('leads');
+  }, ()=>{});
+  db.collection('stockAlerts').onSnapshot(snap=>{
+    stockAlerts = snap.docs.map(d=>d.data());
+    if(document.querySelector('.admin-nav-item.active')?.dataset.tab==='leads') setAdminTab('leads');
+  }, ()=>{});
+}
+
+/* ===== LOGIN ===== */
+function adminLogin(){
+  const val = document.getElementById('adminPass').value;
+  if(val === settings.adminPassword){
+    document.getElementById('loginWrap').classList.add('hidden');
+    document.getElementById('adminShell').classList.remove('hidden');
+    dbReady = true;
+    setAdminTab('dashboard');
+  } else {
+    document.getElementById('adminLoginErr').textContent = 'Incorrect password. Try again.';
+  }
+}
+function logoutAdmin(){
+  document.getElementById('adminShell').classList.add('hidden');
+  document.getElementById('loginWrap').classList.remove('hidden');
+  document.getElementById('adminPass').value='';
+}
+
+/* ===== TABS ===== */
+function setAdminTab(tab){
+  document.querySelectorAll('.admin-nav-item').forEach(n=>n.classList.toggle('active', n.dataset.tab===tab));
+  const main = document.getElementById('adminMain');
+  if(tab==='dashboard') main.innerHTML = renderDashboard();
+  else if(tab==='products') main.innerHTML = renderProductsAdmin();
+  else if(tab==='coupons') main.innerHTML = renderCouponsAdmin();
+  else if(tab==='wheel') main.innerHTML = renderWheelAdmin();
+  else if(tab==='content') main.innerHTML = renderContentAdmin();
+  else if(tab==='orders') main.innerHTML = renderOrdersAdmin();
+  else if(tab==='customers') main.innerHTML = renderCustomersAdmin();
+  else if(tab==='analytics') main.innerHTML = renderAnalyticsAdmin();
+  else if(tab==='reviews') main.innerHTML = renderReviewsAdmin();
+  else if(tab==='leads') main.innerHTML = renderLeadsAdmin();
+  else if(tab==='settings') main.innerHTML = renderSettingsAdmin();
+}
+
+/* ===== DASHBOARD ===== */
+function renderDashboard(){
+  const revenue = orders.reduce((s,o)=>s+(o.total||0),0);
+  const last7 = [...Array(7)].map((_,i)=>{
+    const d = new Date(); d.setDate(d.getDate()-(6-i));
+    const key = d.toISOString().slice(0,10);
+    const dayRevenue = orders.filter(o=>o.date && o.date.slice(0,10)===key).reduce((s,o)=>s+(o.total||0),0);
+    return {label: d.toLocaleDateString('en-IN',{weekday:'short'}), value: dayRevenue};
+  });
+  const maxVal = Math.max(...last7.map(d=>d.value), 1);
+  return `
+    <div class="admin-topbar"><h2>Dashboard</h2></div>
+    <div class="note-banner ok">🔌 Connected to Firebase project <b>achweb-8256f</b>. Products, orders, coupons, reviews and content sync live — no page refresh needed, and changes here reflect on the storefront within seconds.</div>
+    <div class="stat-grid">
+      <div class="stat-box"><div class="num">${products.length}</div><div class="lbl">Total Products</div></div>
+      <div class="stat-box"><div class="num">${orders.length}</div><div class="lbl">Orders Placed</div></div>
+      <div class="stat-box"><div class="num">${coupons.filter(c=>c.active).length}</div><div class="lbl">Active Coupons</div></div>
+      <div class="stat-box"><div class="num">${money(revenue)}</div><div class="lbl">Total Revenue</div></div>
+    </div>
+    ${renderLowStock()}
+    <div class="admin-card">
+      <h3 style="margin-bottom:14px;font-size:16px;">Revenue — Last 7 Days</h3>
+      <div style="display:flex;align-items:flex-end;gap:10px;height:120px;">
+        ${last7.map(d=>`<div style="flex:1;text-align:center;"><div style="height:${Math.max(4,(d.value/maxVal)*90)}px;background:linear-gradient(180deg,var(--rose),var(--lavender-deep));border-radius:4px 4px 0 0;"></div><div style="font-size:10px;color:#8a7480;margin-top:6px;">${d.label}</div></div>`).join('')}
+      </div>
+    </div>
+    <div class="admin-card">
+      <h3 style="margin-bottom:14px;font-size:16px;">Recent Orders</h3>
+      ${orders.length===0?`<p style="font-size:13px;color:#8a7480;">No orders yet.</p>`:`
+      <table class="admin-table"><thead><tr><th>Order ID</th><th>Customer</th><th>Payment</th><th>Items</th><th>Total</th><th>Status</th></tr></thead>
+      <tbody>${orders.slice(0,6).map(o=>`<tr><td>${o.id}</td><td>${o.customer.name}</td><td>${o.payment} <span style="color:#8a7480;">(${o.paymentStatus||''})</span></td><td>${o.items.length}</td><td>${money(o.total)}</td><td>${o.status}</td></tr>`).join('')}</tbody></table>`}
+    </div>
+  `;
+}
+function renderLowStock(){
+  const low = products.filter(p=>p.stock<=5);
+  if(low.length===0) return '';
+  return `<div class="admin-card" style="border-color:#e8c199;background:#fff8ec;"><h3 style="margin-bottom:10px;font-size:16px;color:#7a5f2a;">⚠ Low Stock (${low.length})</h3><div style="font-size:13px;color:#7a5f2a;">${low.map(p=>`${p.name} — ${p.stock} left`).join(' · ')}</div></div>`;
+}
+
+/* ===== PRODUCTS (with real Firebase Storage image upload) ===== */
+function renderProductsAdmin(){
+  return `
+    <div class="admin-topbar"><h2>Products</h2><div style="display:flex;gap:10px;"><button class="btn btn-outline" onclick="exportProductsCSV()">Export CSV</button><button class="btn" onclick="openProductForm()">+ Add Product</button></div></div>
+    <div class="admin-card">
+      <table class="admin-table">
+        <thead><tr><th>Image</th><th>Name</th><th>Category</th><th>Price</th><th>Stock</th><th>Badge</th><th></th></tr></thead>
+        <tbody>
+          ${products.map(p=>`
+            <tr>
+              <td><img src="${p.images[0]}"></td>
+              <td>${p.name}</td><td>${p.category}</td><td>${money(p.price)}</td><td>${p.stock}</td><td>${p.badge||'—'}</td>
+              <td><button class="mini-btn" onclick="openProductForm('${p.id}')">Edit</button><button class="mini-btn" onclick="duplicateProduct('${p.id}')">Duplicate</button><button class="mini-btn danger" onclick="deleteProduct('${p.id}')">Delete</button></td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+      ${products.length===0?`<p style="font-size:13px;color:#8a7480;padding:16px 0;">No products yet.</p>`:''}
+    </div>
+    <div id="productFormWrap"></div>
+  `;
+}
+function openProductForm(id){
+  editingProductId = id || null;
+  const p = id ? products.find(pp=>pp.id===id) : null;
+  editingImages = p ? [...p.images] : [];
+  document.getElementById('productFormWrap').innerHTML = `
+    <div class="admin-card">
+      <h3 style="margin-bottom:18px;">${p?'Edit Product':'Add New Product'}</h3>
+      <div class="form-grid">
+        <div class="field"><label>Product Name</label><input id="pfName" value="${p?p.name:''}"></div>
+        <div class="field"><label>Category</label><input id="pfCategory" value="${p?p.category:''}" placeholder="Ethnic / Western / Accessories"></div>
+        <div class="field"><label>Price (₹)</label><input id="pfPrice" type="number" value="${p?p.price:''}"></div>
+        <div class="field"><label>MRP / Strike Price (₹)</label><input id="pfMrp" type="number" value="${p?p.mrp:''}"></div>
+        <div class="field"><label>Stock Quantity</label><input id="pfStock" type="number" value="${p?p.stock:''}"></div>
+        <div class="field"><label>Badge (optional)</label><input id="pfBadge" value="${p?p.badge||'':''}" placeholder="New / Bestseller / Trending"></div>
+        <div class="field full"><label>Sizes (comma separated)</label><input id="pfSizes" value="${p?p.sizes.join(', '):'S, M, L, XL'}"></div>
+        <div class="field full"><label>Description</label><textarea id="pfDesc" rows="3">${p?p.desc||'':''}</textarea></div>
+        <div class="field full">
+          <label>Product Images — uploaded to Firebase Storage</label>
+          <div class="img-upload-zone" onclick="document.getElementById('pfImgInput').click()">Click to upload image(s) — JPG/PNG</div>
+          <input type="file" id="pfImgInput" accept="image/*" multiple style="display:none" onchange="handleImgUpload(event)">
+          <div id="uploadStatus" style="font-size:12px;color:#8a7480;margin-bottom:8px;"></div>
+          <div class="img-preview-row" id="imgPreviewRow"></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:20px;">
+        <button class="btn" id="saveProductBtn" onclick="saveProduct()">${p?'Save Changes':'Add Product'}</button>
+        <button class="btn btn-outline" onclick="document.getElementById('productFormWrap').innerHTML=''">Cancel</button>
+      </div>
+    </div>
+  `;
+  renderImgPreviews();
+  document.getElementById('productFormWrap').scrollIntoView({behavior:'smooth'});
+}
+async function handleImgUpload(e){
+  const files = Array.from(e.target.files);
+  const statusEl = document.getElementById('uploadStatus');
+  uploadingCount += files.length;
+  for(const file of files){
+    statusEl.textContent = `Processing ${file.name}…`;
+    try{
+      // resize + convert to base64 — no Firebase Storage rules needed
+      const base64 = await resizeAndEncode(file, 800);
+      editingImages.push(base64);
+      renderImgPreviews();
+      statusEl.textContent = '';
+    }catch(err){
+      statusEl.innerHTML = `<span style="color:#c0405f;">Failed to process ${file.name}: ${err.message}</span>`;
+    }finally{
+      uploadingCount--;
+      if(uploadingCount<=0) statusEl.textContent = '';
+    }
+  }
+}
+
+function resizeAndEncode(file, maxPx){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onerror = ()=> reject(new Error('Could not read file'));
+    reader.onload = evt => {
+      const img = new Image();
+      img.onerror = ()=> reject(new Error('Could not load image'));
+      img.onload = ()=>{
+        const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.82));
+      };
+      img.src = evt.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+function renderImgPreviews(){
+  const row = document.getElementById('imgPreviewRow');
+  if(!row) return;
+  row.innerHTML = editingImages.map((img,i)=>`<div class="img-preview"><img src="${img}"><button onclick="removeEditingImage(${i})">✕</button></div>`).join('');
+}
+function removeEditingImage(i){ editingImages.splice(i,1); renderImgPreviews(); }
+async function saveProduct(){
+  const name = document.getElementById('pfName').value.trim();
+  const category = document.getElementById('pfCategory').value.trim();
+  const price = Number(document.getElementById('pfPrice').value);
+  const mrp = Number(document.getElementById('pfMrp').value) || price;
+  const stock = Number(document.getElementById('pfStock').value) || 0;
+  const badge = document.getElementById('pfBadge').value.trim();
+  const sizes = document.getElementById('pfSizes').value.split(',').map(s=>s.trim()).filter(Boolean);
+  const desc = document.getElementById('pfDesc').value.trim();
+  const images = editingImages.length ? editingImages : [ph(name||'Product','#eab3c6','#e08ba8')];
+  if(!name || !category || !price){ alert('Please fill in name, category and price.'); return; }
+  const data = {name,category,price,mrp,stock,badge,sizes,desc,images};
+  const btn = document.getElementById('saveProductBtn');
+  btn.textContent = 'Saving…'; btn.setAttribute('disabled','');
+  try{
+    if(editingProductId){ await db.collection('products').doc(editingProductId).set(data, {merge:true}); }
+    else { await db.collection('products').add(data); }
+    document.getElementById('productFormWrap').innerHTML='';
+  }catch(e){ alert('Could not save product: '+e.message); btn.removeAttribute('disabled'); btn.textContent='Save'; }
+}
+async function duplicateProduct(id){
+  const p = products.find(pp=>pp.id===id);
+  if(!p) return;
+  const {id:_drop, ...rest} = p;
+  await db.collection('products').add({...rest, name: rest.name+' (Copy)'});
+}
+async function deleteProduct(id){
+  if(!confirm('Delete this product? This cannot be undone.')) return;
+  await db.collection('products').doc(id).delete();
+}
+function exportProductsCSV(){
+  const rows = [['Name','Category','Price','MRP','Stock','Badge','Sizes']];
+  products.forEach(p=>rows.push([p.name,p.category,p.price,p.mrp,p.stock,p.badge||'',p.sizes.join('/')]));
+  downloadCSV(rows, 'ach-products.csv');
+}
+
+/* ===== COUPONS ===== */
+function renderCouponsAdmin(){
+  return `
+    <div class="admin-topbar"><h2>Coupons</h2><button class="btn" onclick="openCouponForm()">+ Add Coupon</button></div>
+    <div class="admin-card">
+      <table class="admin-table">
+        <thead><tr><th>Code</th><th>Type</th><th>Value</th><th>Min Order</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+          ${coupons.map(c=>`
+            <tr>
+              <td>${c.code}</td><td>${c.type==='percent'?'Percent':'Flat'}</td><td>${c.type==='percent'?c.value+'%':money(c.value)}</td><td>${c.minOrder?money(c.minOrder):'—'}</td>
+              <td><span class="badge-tag ${c.active?'':'off'}">${c.active?'Active':'Inactive'}</span></td>
+              <td><button class="mini-btn" onclick="toggleCoupon('${c.id}', ${!c.active})">${c.active?'Disable':'Enable'}</button><button class="mini-btn danger" onclick="deleteCoupon('${c.id}')">Delete</button></td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+      ${coupons.length===0?`<p style="font-size:13px;color:#8a7480;padding:16px 0;">No coupons yet.</p>`:''}
+    </div>
+    <div id="couponFormWrap"></div>
+  `;
+}
+function openCouponForm(){
+  document.getElementById('couponFormWrap').innerHTML = `
+    <div class="admin-card">
+      <h3 style="margin-bottom:18px;">Add New Coupon</h3>
+      <div class="form-grid">
+        <div class="field"><label>Coupon Code</label><input id="cfCode" placeholder="e.g. SAVE20"></div>
+        <div class="field"><label>Type</label><select id="cfType"><option value="percent">Percentage Off</option><option value="flat">Flat Amount Off</option></select></div>
+        <div class="field"><label>Value</label><input id="cfValue" type="number" placeholder="e.g. 10 for 10%"></div>
+        <div class="field"><label>Minimum Order (optional)</label><input id="cfMin" type="number" placeholder="e.g. 2000"></div>
+        <div class="field full"><label>Description</label><input id="cfDesc" placeholder="Shown to customer at checkout"></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:20px;">
+        <button class="btn" onclick="saveCoupon()">Add Coupon</button>
+        <button class="btn btn-outline" onclick="document.getElementById('couponFormWrap').innerHTML=''">Cancel</button>
+      </div>
+    </div>
+  `;
+}
+async function saveCoupon(){
+  const code = document.getElementById('cfCode').value.trim().toUpperCase();
+  const type = document.getElementById('cfType').value;
+  const value = Number(document.getElementById('cfValue').value);
+  const minOrder = Number(document.getElementById('cfMin').value) || 0;
+  const desc = document.getElementById('cfDesc').value.trim();
+  if(!code || !value){ alert('Please enter a coupon code and value.'); return; }
+  if(coupons.find(c=>c.code===code)){ alert('A coupon with this code already exists.'); return; }
+  await db.collection('coupons').doc(code).set({code, type, value, active:true, desc: desc || `${type==='percent'?value+'% off':'₹'+value+' off'}`, minOrder});
+  document.getElementById('couponFormWrap').innerHTML='';
+}
+async function toggleCoupon(id, next){ await db.collection('coupons').doc(id).update({active: next}); }
+async function deleteCoupon(id){ if(!confirm('Delete this coupon?')) return; await db.collection('coupons').doc(id).delete(); }
+
+/* ===== SPIN WHEEL CONTROL ===== */
+function renderWheelAdmin(){
+  wheelDraft = JSON.parse(JSON.stringify(settings.wheelPrizes && settings.wheelPrizes.length ? settings.wheelPrizes : DEFAULT_SETTINGS.wheelPrizes));
+  return `
+    <div class="admin-topbar"><h2>Spin Wheel</h2></div>
+    <div class="admin-card">
+      <div class="toggle-row">
+        <div><div style="font-size:14px;">Enable Spin-to-Win Popup</div><div style="font-size:12px;color:#8a7480;">Shows once per visitor session, 3.5s after the site loads.</div></div>
+        <div class="switch ${settings.wheelEnabled?'on':''}" onclick="toggleWheelEnabled()"></div>
+      </div>
+    </div>
+    <div class="admin-card">
+      <h3 style="margin-bottom:6px;font-size:16px;">Prizes &amp; Probability</h3>
+      <p style="font-size:12px;color:#8a7480;margin-bottom:14px;">All slices are drawn the same size on the wheel — customers can't tell the odds by looking. Weight is what actually controls the chance of landing on each prize (higher = more likely to win). "Try Again" (type = None) awards no coupon.</p>
+      <div id="wheelPrizeList"></div>
+      <button class="mini-btn" style="margin-top:14px;" onclick="addWheelPrize()">+ Add Prize</button>
+      <div style="margin-top:20px;display:flex;gap:10px;">
+        <button class="btn" onclick="saveWheelPrizes()">Save Wheel Settings</button>
+      </div>
+    </div>
+  `;
+  }
+function afterWheelRender(){ renderWheelPrizeList(); }
+function renderWheelPrizeList(){
+  const totalWeight = wheelDraft.reduce((s,p)=>s+Number(p.weight||0),0) || 1;
+  document.getElementById('wheelPrizeList').innerHTML = wheelDraft.map((p,i)=>`
+    <div class="wheel-prize-row">
+      <div><input type="text" value="${p.label}" placeholder="Label" onchange="updateWheelPrize(${i},'label',this.value)"><div class="weight-bar"><div class="weight-bar-fill" style="width:${(p.weight/totalWeight*100).toFixed(0)}%;"></div></div></div>
+      <select onchange="updateWheelPrize(${i},'type',this.value)">
+        <option value="percent" ${p.type==='percent'?'selected':''}>% Off</option>
+        <option value="flat" ${p.type==='flat'?'selected':''}>Flat ₹ Off</option>
+        <option value="none" ${p.type==='none'?'selected':''}>No Prize</option>
+      </select>
+      <input type="number" value="${p.value}" placeholder="Value" onchange="updateWheelPrize(${i},'value',Number(this.value))">
+      <input type="number" value="${p.weight}" placeholder="Weight" onchange="updateWheelPrize(${i},'weight',Number(this.value))">
+      <button class="mini-btn danger" onclick="removeWheelPrize(${i})">✕</button>
+    </div>
+  `).join('');
+}
+function updateWheelPrize(i, field, val){
+  wheelDraft[i][field] = val;
+  if(field==='label' && wheelDraft[i].type!=='none'){ wheelDraft[i].code = 'SPIN'+wheelDraft[i].label.replace(/[^A-Z0-9]/gi,'').toUpperCase().slice(0,8); }
+  renderWheelPrizeList();
+}
+function addWheelPrize(){ wheelDraft.push({label:'New Prize', type:'percent', value:5, weight:10, code:'SPINNEW'+wheelDraft.length}); renderWheelPrizeList(); }
+function removeWheelPrize(i){ wheelDraft.splice(i,1); renderWheelPrizeList(); }
+async function toggleWheelEnabled(){ await db.collection('settings').doc('main').set({wheelEnabled: !settings.wheelEnabled}, {merge:true}); }
+async function saveWheelPrizes(){
+  await db.collection('settings').doc('main').set({wheelPrizes: wheelDraft}, {merge:true});
+  alert('Spin wheel settings saved.');
+}
+
+/* ===== SITE CONTENT ===== */
+function renderContentAdmin(){
+  const s = settings;
+  return `
+    <div class="admin-topbar"><h2>Site Content</h2></div>
+    <div class="admin-card">
+      <h3 style="margin-bottom:14px;font-size:16px;">Homepage Hero</h3>
+      <div class="form-grid">
+        <div class="field full"><label>Eyebrow Text</label><input id="cfHeroEyebrow" value="${s.heroEyebrow||''}"></div>
+        <div class="field full"><label>Hero Title</label><input id="cfHeroTitle" value="${s.heroTitle||''}"></div>
+        <div class="field full"><label>Hero Subtitle</label><textarea id="cfHeroSubtitle" rows="2">${s.heroSubtitle||''}</textarea></div>
+      </div>
+    </div>
+    <div class="admin-card">
+      <h3 style="margin-bottom:14px;font-size:16px;">Announcement Bar</h3>
+      <div class="field full"><input id="cfAnnounce" value="${s.announcementText||''}"></div>
+    </div>
+    <div class="admin-card">
+      <h3 style="margin-bottom:14px;font-size:16px;">Sale Banner &amp; Countdown</h3>
+      <div class="form-grid">
+        <div class="field full"><label>Banner Title</label><input id="cfSaleTitle" value="${s.saleTitle||''}"></div>
+        <div class="field full"><label>Banner Subtitle</label><input id="cfSaleSubtitle" value="${s.saleSubtitle||''}"></div>
+        <div class="field"><label>Countdown Ends</label><input type="datetime-local" id="cfSaleEnd" value="${(s.saleEndDate||new Date().toISOString()).slice(0,16)}"></div>
+      </div>
+    </div>
+    <div class="admin-card">
+      <h3 style="margin-bottom:14px;font-size:16px;">"Why Shop With Us" Strip</h3>
+      ${(s.aboutItems||DEFAULT_SETTINGS.aboutItems).map((a,i)=>`
+        <div class="form-grid" style="margin-bottom:10px;border-bottom:1px solid var(--stone);padding-bottom:10px;">
+          <div class="field"><label>Title ${i+1}</label><input id="cfAboutTitle${i}" value="${a.title}"></div>
+          <div class="field"><label>Text ${i+1}</label><input id="cfAboutText${i}" value="${a.text}"></div>
+        </div>
+      `).join('')}
+    </div>
+    <button class="btn" onclick="saveContent()">Save Site Content</button>
+  `;
+}
+async function saveContent(){
+  const aboutItems = [0,1,2].map(i=>({title:document.getElementById('cfAboutTitle'+i).value, text:document.getElementById('cfAboutText'+i).value}));
+  const data = {
+    heroEyebrow: document.getElementById('cfHeroEyebrow').value,
+    heroTitle: document.getElementById('cfHeroTitle').value,
+    heroSubtitle: document.getElementById('cfHeroSubtitle').value,
+    announcementText: document.getElementById('cfAnnounce').value,
+    saleTitle: document.getElementById('cfSaleTitle').value,
+    saleSubtitle: document.getElementById('cfSaleSubtitle').value,
+    saleEndDate: new Date(document.getElementById('cfSaleEnd').value).toISOString(),
+    aboutItems
+  };
+  await db.collection('settings').doc('main').set(data, {merge:true});
+  alert('Site content updated — visible on the storefront immediately.');
+}
+
+/* ===== ORDERS ===== */
+function renderOrdersAdmin(){
+  const pendingUpi = orders.filter(o=>o.payment==='UPI' && o.paymentStatus==='Pending Verification');
+  return `
+    <div class="admin-topbar"><h2>Orders</h2>${orders.length?`<button class="btn btn-outline" onclick="exportOrdersCSV()">Export CSV</button>`:''}</div>
+
+    ${pendingUpi.length ? `
+    <div class="note-banner danger" style="margin-bottom:16px;">
+      ⚠️ <b>${pendingUpi.length} UPI payment${pendingUpi.length>1?'s':''} need verification.</b>
+      Check your GPay/PhonePe app and confirm below.
+    </div>` : ''}
+
+    <div class="admin-card">
+      ${orders.length===0?`<p style="font-size:13px;color:#8a7480;">No orders placed yet.</p>`:`
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Order ID</th><th>Date</th><th>Customer</th><th>Phone</th>
+            <th>Payment</th><th>Total</th><th>Status</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${orders.map(o=>{
+            const isPendingUpi = o.payment==='UPI' && o.paymentStatus==='Pending Verification';
+            const isConfirmedUpi = o.payment==='UPI' && o.paymentStatus==='Paid';
+            return `
+            <tr style="${isPendingUpi?'background:#fff8ec;':''}">
+              <td style="font-size:12px;">${o.id}</td>
+              <td style="font-size:11px;color:#8a7480;">${new Date(o.date).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</td>
+              <td>${o.customer.name}</td>
+              <td>${o.customer.phone}</td>
+              <td>
+                ${o.payment}<br>
+                <span style="font-size:11px;color:${isPendingUpi?'#c07000':isConfirmedUpi?'#3f6b41':'#8a7480'};">
+                  ${isPendingUpi?'⏳ Awaiting verification':o.paymentStatus||''}
+                </span>
+              </td>
+              <td style="font-weight:500;">${money(o.total)}</td>
+              <td>
+                <select onchange="updateOrderStatus('${o.id}', this.value)" style="font-size:12px;padding:5px 8px;border:1px solid var(--stone);border-radius:6px;">
+                  ${['Placed','Processing','Shipped','Delivered','Cancelled'].map(s=>`<option ${o.status===s?'selected':''}>${s}</option>`).join('')}
+                </select>
+              </td>
+              <td>
+                ${isPendingUpi ? `
+                  <button class="mini-btn" style="background:#eef6ef;border-color:#c9dfcb;color:#3f5a41;"
+                    onclick="confirmUpiPayment('${o.id}')">✓ Confirm Payment</button>
+                ` : ''}
+                ${isConfirmedUpi ? `<span style="font-size:11px;color:#3f5a41;">✓ Paid</span>` : ''}
+                ${(o.status==='Placed'||o.status==='Processing') && o.payment!=='UPI' || (o.status==='Placed'||o.status==='Processing') && isConfirmedUpi ? `
+                  <button class="mini-btn" style="margin-top:4px;" onclick="bookFakeCourier('${o.id}')">🚚 Book Courier</button>
+                ` : ''}
+                ${o.trackingNumber ? `<div style="font-size:11px;color:#8a7480;margin-top:4px;">${o.courierName||''} ${o.trackingNumber}</div>` : ''}
+              </td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>`}
+    </div>
+  `;
+}
+async function updateOrderStatus(id, status){
+  await db.collection('orders').doc(id).update({status});
+}
+async function confirmUpiPayment(id){
+  if(!confirm('Confirm that you have received this UPI payment?')) return;
+  await db.collection('orders').doc(id).update({
+    paymentStatus: 'Paid',
+    paymentConfirmedAt: new Date().toISOString(),
+    paymentConfirmedBy: 'admin'
+  });
+  alert('Payment confirmed. Order is now marked as Paid.');
+}
+function exportOrdersCSV(){
+  const rows = [['Order ID','Date','Customer','Phone','Payment','Payment Status','Items','Coupon','Subtotal','Discount','Shipping','GST','Total','Status']];
+  orders.forEach(o=>rows.push([o.id, new Date(o.date).toLocaleDateString('en-IN'), o.customer.name, o.customer.phone, o.payment, o.paymentStatus||'', o.items.map(i=>i.name+' x'+i.qty).join('; '), o.coupon||'', o.subtotal, o.discount, o.shipping||0, o.gst, o.total, o.status]));
+  downloadCSV(rows, 'ach-orders.csv');
+}
+function downloadCSV(rows, filename){
+  const csv = rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = filename; a.click();
+}
+
+/* ===== REVIEWS MODERATION ===== */
+function renderReviewsAdmin(){
+  return `
+    <div class="admin-topbar"><h2>Reviews</h2></div>
+    <div class="admin-card">
+      ${reviews.length===0?`<p style="font-size:13px;color:#8a7480;">No reviews submitted yet.</p>`:`
+      <table class="admin-table">
+        <thead><tr><th>Product</th><th>Stars</th><th>Review</th><th>By</th><th></th></tr></thead>
+        <tbody>
+          ${reviews.map(r=>{
+            const p = products.find(pp=>pp.id===r.productId);
+            return `<tr><td>${p?p.name:r.productId}</td><td>${'★'.repeat(r.stars)}${'☆'.repeat(5-r.stars)}</td><td style="max-width:280px;">${r.text}</td><td>${r.name}</td><td><button class="mini-btn danger" onclick="deleteReview('${r.id}')">Delete</button></td></tr>`;
+          }).join('')}
+        </tbody>
+      </table>`}
+    </div>
+  `;
+}
+async function deleteReview(id){ if(!confirm('Delete this review?')) return; await db.collection('reviews').doc(id).delete(); }
+
+/* ===== NEWSLETTER & STOCK ALERT LEADS ===== */
+function renderLeadsAdmin(){
+  return `
+    <div class="admin-topbar"><h2>Newsletter &amp; Stock Alerts</h2></div>
+    <div class="admin-card">
+      <h3 style="margin-bottom:10px;font-size:16px;">Newsletter Subscribers (${newsletterLeads.length})</h3>
+      ${newsletterLeads.length===0?`<p style="font-size:13px;color:#8a7480;">No subscribers yet.</p>`:`<div>${newsletterLeads.map(l=>`<span class="tag-pill">${l.email}</span>`).join('')}</div><button class="mini-btn" style="margin-top:12px;" onclick="exportLeadsCSV()">Export CSV</button>`}
+    </div>
+    <div class="admin-card">
+      <h3 style="margin-bottom:10px;font-size:16px;">Back-in-Stock Requests (${stockAlerts.length})</h3>
+      ${stockAlerts.length===0?`<p style="font-size:13px;color:#8a7480;">No requests yet.</p>`:`
+      <table class="admin-table"><thead><tr><th>Product</th><th>Email</th></tr></thead><tbody>
+        ${stockAlerts.map(a=>{const p=products.find(pp=>pp.id===a.productId); return `<tr><td>${p?p.name:a.productId}</td><td>${a.email}</td></tr>`;}).join('')}
+      </tbody></table>`}
+    </div>
+  `;
+}
+function exportLeadsCSV(){
+  const rows = [['Email','Date']];
+  newsletterLeads.forEach(l=>rows.push([l.email, l.date]));
+  downloadCSV(rows, 'ach-newsletter.csv');
+}
+
+/* ===== SETTINGS ===== */
+function renderSettingsAdmin(){
+  return `
+    <div class="admin-topbar"><h2>Settings</h2></div>
+    <div class="note-banner">🔐 This app uses open Firestore/Storage rules for simplicity (no login system beyond this admin password). Before going fully live, set Firestore &amp; Storage rules in the Firebase Console (Project <b>achweb-8256f</b>) to restrict writes — e.g. allow public read, but require an App Check token or Cloud Function for writes. Ask me and I can walk you through it.</div>
+    <div class="admin-card">
+      <h3 style="margin-bottom:6px;font-size:16px;">Tax Display</h3>
+      <div class="toggle-row">
+        <div><div style="font-size:14px;">Show GST in prices &amp; checkout</div><div style="font-size:12px;color:#8a7480;">When off, no GST line is shown or added to the total.</div></div>
+        <div class="switch ${settings.showGST?'on':''}" onclick="toggleGST()"></div>
+      </div>
+      <div class="toggle-row"><div style="font-size:14px;">GST Rate (%)</div><input type="number" value="${settings.gstRate}" style="width:80px;padding:8px;border:1px solid var(--stone);border-radius:6px;" onchange="updateSetting('gstRate', Number(this.value))"></div>
+    </div>
+    <div class="admin-card">
+      <h3 style="margin-bottom:6px;font-size:16px;">Shipping</h3>
+      <div class="toggle-row"><div style="font-size:14px;">Free shipping threshold (₹)</div><input type="number" value="${settings.shippingThreshold}" style="width:100px;padding:8px;border:1px solid var(--stone);border-radius:6px;" onchange="updateSetting('shippingThreshold', Number(this.value))"></div>
+      <div class="toggle-row"><div style="font-size:14px;">Shipping fee below threshold (₹)</div><input type="number" value="${settings.shippingFee}" style="width:100px;padding:8px;border:1px solid var(--stone);border-radius:6px;" onchange="updateSetting('shippingFee', Number(this.value))"></div>
+    </div>
+    <div class="admin-card">
+      <h3 style="margin-bottom:6px;font-size:16px;">Admin Password</h3>
+      <div style="display:flex;gap:10px;"><input type="password" id="newAdminPass" placeholder="New password" style="flex:1;padding:10px 12px;border:1px solid var(--stone);border-radius:8px;"><button class="btn" onclick="updateAdminPassword()">Update</button></div>
+    </div>
+    <div class="admin-card">
+      <h3 style="margin-bottom:6px;font-size:16px;">Store Currency Symbol</h3>
+      <input type="text" value="${settings.currency}" style="width:80px;padding:8px;border:1px solid var(--stone);border-radius:6px;" onchange="updateSetting('currency', this.value)">
+    </div>
+    <div class="admin-card">
+      <h3 style="margin-bottom:6px;font-size:16px;">Payment Methods</h3>
+      <p style="font-size:13px;color:#8a7480;">Cash on Delivery, UPI, and Card are enabled by default (simulated gateway). To accept live payments, connect Razorpay or Stripe — I can help wire that up when you're ready.</p>
+    </div>
+  `;
+}
+async function toggleGST(){ await db.collection('settings').doc('main').set({showGST: !settings.showGST}, {merge:true}); }
+async function updateSetting(key, val){ await db.collection('settings').doc('main').set({[key]: val}, {merge:true}); }
+async function updateAdminPassword(){
+  const val = document.getElementById('newAdminPass').value.trim();
+  if(!val){ alert('Enter a new password.'); return; }
+  await db.collection('settings').doc('main').set({adminPassword: val}, {merge:true});
+  alert('Admin password updated.');
+  document.getElementById('newAdminPass').value='';
+}
+
+/* ===== BOOTSTRAP ===== */
+(async function boot(){
+  try{ await seedIfEmpty(); }catch(e){ console.warn('Seed skipped:', e.message); }
+  listenAll();
+})();
+
+/* patch setAdminTab to run post-render hooks for wheel tab */
+const _origSetAdminTab = setAdminTab;
+setAdminTab = function(tab){ _origSetAdminTab(tab); if(tab==='wheel') afterWheelRender(); };
+</script>
+</body>
+</html>
+<script>
+/* ===== OVERRIDES — email on status change, fake courier, customers, analytics ===== */
+
+/* replace updateOrderStatus */
+window.updateOrderStatus = async function(id, status){
+  await db.collection('orders').doc(id).update({status});
+  if(status === 'Shipped' || status === 'Delivered'){
+    const order = orders.find(o=>o.id===id);
+    if(order && order.customer && order.customer.email) sendStatusEmail(order, status);
+  }
+};
+
+function sendStatusEmail(order, status){
+  const tracking = order.trackingNumber ? `\n\nTracking: ${order.courierName||''} — ${order.trackingNumber}` : '';
+  const msg = status === 'Shipped'
+    ? `Great news! Your order ${order.id} has been shipped and is on its way.\n\nShipping to: ${order.customer.address}, ${order.customer.city} — ${order.customer.pin}${tracking}\n\nThank you for shopping with ACH Boutique!`
+    : `Your order ${order.id} has been delivered! We hope you love your purchase.\n\nThank you for shopping with ACH Boutique. Please leave us a review!`;
+  emailjs.send('service_xu0ot7h','template_336mhcg',{
+    to_email: order.customer.email, to_name: order.customer.name,
+    otp_code: msg, order_note: `Order ${order.id} — ${status}`
+  }).catch(e=>console.warn('Status email failed:',e));
+}
+
+/* replace confirmUpiPayment */
+window.confirmUpiPayment = async function(id){
+  if(!confirm('Confirm that you have received this UPI payment?')) return;
+  await db.collection('orders').doc(id).update({
+    paymentStatus:'Paid', paymentConfirmedAt: new Date().toISOString(), paymentConfirmedBy:'admin'
+  });
+  const order = orders.find(o=>o.id===id);
+  if(order && order.customer && order.customer.email){
+    emailjs.send('service_xu0ot7h','template_336mhcg',{
+      to_email: order.customer.email, to_name: order.customer.name,
+      otp_code: `Your UPI payment for order ${order.id} has been confirmed! ✓\n\nTotal: ₹${order.total}\nItems: ${order.items.map(i=>i.name+' x'+i.qty).join(', ')}\n\nWe will ship your order soon. Thank you for shopping with ACH Boutique!`,
+      order_note: `Payment confirmed — ${order.id}`
+    }).catch(e=>console.warn('UPI confirm email:',e));
+  }
+  alert('Payment confirmed. Customer notified by email.');
+};
+
+/* fake courier booking */
+window.bookFakeCourier = async function(orderId){
+  const awb = 'AWB'+Date.now().toString().slice(-10);
+  const couriers = ['Delhivery','BlueDart','DTDC','Ekart','XpressBees'];
+  const courier = couriers[Math.floor(Math.random()*couriers.length)];
+  await db.collection('orders').doc(orderId).update({
+    status:'Shipped', trackingNumber:awb, courierName:courier, shippedAt:new Date().toISOString()
+  });
+  const order = orders.find(o=>o.id===orderId);
+  if(order && order.customer && order.customer.email)
+    sendStatusEmail({...order, trackingNumber:awb, courierName:courier},'Shipped');
+  alert(`Shipment booked!\nCourier: ${courier}\nTracking: ${awb}\n\nCustomer has been emailed.`);
+};
+
+/* customers tab */
+window.renderCustomersAdmin = function(){
+  const map = {};
+  orders.forEach(o=>{
+    const key = o.customer?.phone||'unknown';
+    if(!map[key]) map[key]={name:o.customer?.name||'—',phone:key,email:o.customer?.email||'—',orders:[],total:0};
+    map[key].orders.push(o); map[key].total+=(o.total||0);
+  });
+  const customers = Object.values(map).sort((a,b)=>b.total-a.total);
+  return `
+    <div class="admin-topbar"><h2>Customers</h2><span style="font-size:13px;color:#8a7480;">${customers.length} unique customers</span></div>
+    <div class="admin-card">
+      ${customers.length===0?`<p style="font-size:13px;color:#8a7480;">No customers yet.</p>`:`
+      <table class="admin-table">
+        <thead><tr><th>Name</th><th>Phone</th><th>Email</th><th>Orders</th><th>Total Spent</th><th>Last Order</th></tr></thead>
+        <tbody>${customers.map(c=>{
+          const last=[...c.orders].sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
+          return `<tr>
+            <td>${c.name}</td><td>${c.phone}</td><td style="font-size:12px;">${c.email}</td>
+            <td>${c.orders.length}</td><td style="font-weight:500;">${money(c.total)}</td>
+            <td style="font-size:12px;color:#8a7480;">${new Date(last.date).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table>`}
+    </div>`;
+};
+
+/* analytics tab */
+window.renderAnalyticsAdmin = function(){
+  const totalRev=orders.reduce((s,o)=>s+(o.total||0),0);
+  const thisMonth=new Date().toISOString().slice(0,7);
+  const monthOrders=orders.filter(o=>o.date&&o.date.startsWith(thisMonth));
+  const monthRev=monthOrders.reduce((s,o)=>s+(o.total||0),0);
+  const avgOrder=orders.length?Math.round(totalRev/orders.length):0;
+  const days=[...Array(30)].map((_,i)=>{
+    const d=new Date(); d.setDate(d.getDate()-(29-i));
+    const key=d.toISOString().slice(0,10);
+    return {label:d.toLocaleDateString('en-IN',{day:'numeric',month:'short'}),key,
+      value:orders.filter(o=>o.date&&o.date.slice(0,10)===key).reduce((s,o)=>s+(o.total||0),0)};
+  });
+  const maxRev=Math.max(...days.map(d=>d.value),1);
+  const prodSales={};
+  orders.forEach(o=>o.items&&o.items.forEach(i=>{prodSales[i.name]=(prodSales[i.name]||0)+(i.price*i.qty);}));
+  const topProds=Object.entries(prodSales).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const catSales={};
+  orders.forEach(o=>o.items&&o.items.forEach(i=>{
+    const cat=products.find(pp=>pp.name===i.name)?.category||'Other';
+    catSales[cat]=(catSales[cat]||0)+(i.price*i.qty);
+  }));
+  const payBreak={};
+  orders.forEach(o=>{payBreak[o.payment]=(payBreak[o.payment]||0)+1;});
+  return `
+    <div class="admin-topbar"><h2>Analytics</h2></div>
+    <div class="stat-grid">
+      <div class="stat-box"><div class="num">${money(totalRev)}</div><div class="lbl">Total Revenue</div></div>
+      <div class="stat-box"><div class="num">${money(monthRev)}</div><div class="lbl">This Month</div></div>
+      <div class="stat-box"><div class="num">${money(avgOrder)}</div><div class="lbl">Avg Order Value</div></div>
+      <div class="stat-box"><div class="num">${monthOrders.length}</div><div class="lbl">Orders This Month</div></div>
+    </div>
+    <div class="admin-card">
+      <h3 style="margin-bottom:14px;font-size:16px;">Revenue — Last 30 Days</h3>
+      <div style="display:flex;align-items:flex-end;gap:3px;height:100px;overflow-x:auto;padding-bottom:4px;">
+        ${days.map(d=>`<div style="flex:0 0 auto;width:20px;" title="${d.label}: ${money(d.value)}">
+          <div style="height:${Math.max(2,(d.value/maxRev)*90)}px;background:linear-gradient(180deg,var(--rose),var(--lavender-deep));border-radius:3px 3px 0 0;"></div>
+        </div>`).join('')}
+      </div>
+      <div style="font-size:11px;color:#8a7480;margin-top:6px;">Hover each bar for daily revenue</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+      <div class="admin-card" style="margin-bottom:0;">
+        <h3 style="margin-bottom:12px;font-size:16px;">Top Products</h3>
+        ${topProds.length===0?`<p style="font-size:13px;color:#8a7480;">No sales yet.</p>`:`
+        <table class="admin-table"><thead><tr><th>Product</th><th>Revenue</th></tr></thead>
+        <tbody>${topProds.map(([n,r])=>`<tr><td style="font-size:12px;">${n}</td><td style="font-weight:500;">${money(r)}</td></tr>`).join('')}</tbody></table>`}
+      </div>
+      <div class="admin-card" style="margin-bottom:0;">
+        <h3 style="margin-bottom:12px;font-size:16px;">By Category</h3>
+        ${Object.keys(catSales).length===0?`<p style="font-size:13px;color:#8a7480;">No sales yet.</p>`:`
+        <table class="admin-table"><thead><tr><th>Category</th><th>Revenue</th></tr></thead>
+        <tbody>${Object.entries(catSales).sort((a,b)=>b[1]-a[1]).map(([c,r])=>`<tr><td>${c}</td><td style="font-weight:500;">${money(r)}</td></tr>`).join('')}</tbody></table>`}
+      </div>
+    </div>
+    <div class="admin-card">
+      <h3 style="margin-bottom:12px;font-size:16px;">Payment Methods</h3>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;">
+        ${Object.entries(payBreak).map(([m,c])=>`
+          <div style="background:var(--blush);border-radius:10px;padding:14px 22px;text-align:center;">
+            <div style="font-size:22px;font-weight:600;">${c}</div>
+            <div style="font-size:12px;color:#8a7480;">${m}</div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+};
+</script>

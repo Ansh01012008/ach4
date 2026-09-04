@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="pageTitle">Product — ACH Boutique</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+</head>
+<body>
+
+<div id="chrome-header"></div>
+
+<div class="page-wrap" style="padding-bottom:0;">
+  <div class="breadcrumb" id="breadcrumb"><a href="index.html">Shop</a> / <span id="crumbName">…</span></div>
+</div>
+
+<div id="pdPageRoot">
+  <div class="page-wrap" style="text-align:center;padding:80px 20px;">
+    <div class="spinner-sm" style="margin:0 auto 14px;"></div>Loading product…
+  </div>
+</div>
+
+<div id="chrome-footer"></div>
+<div id="chrome-overlays"></div>
+
+<!-- EmailJS -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>emailjs.init('I4iWZBJq_43MymLwS');</script>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+
+<script src="shared.js"></script>
+<script src="chrome.js"></script>
+<script>
+injectSharedChrome();
+
+const _pid = new URLSearchParams(window.location.search).get('id');
+currentImgIdx = 0; // already declared in shared.js — do not redeclare with let/const
+
+function renderProductPage(){
+  const p = products.find(x=>x.id===_pid);
+  const root = document.getElementById('pdPageRoot');
+  if(!p){
+    root.innerHTML = `<div class="page-wrap"><div class="empty-page">
+      <h2 style="margin-bottom:10px;">Product not found</h2>
+      <p style="margin-bottom:20px;">This item may have been removed or is no longer available.</p>
+      <a class="btn" href="index.html">Back to Shop</a>
+    </div></div>`;
+    return;
+  }
+  document.getElementById('pageTitle').textContent = p.name + ' — ACH Boutique';
+  document.getElementById('crumbName').textContent = p.name;
+
+  const sizes = p.sizes && p.sizes.length ? p.sizes : ['Free Size'];
+  root.innerHTML = `
+    <div class="pd-page">
+      <div>
+        <div class="pd-img"><img id="pdMainImg" src="${p.images[currentImgIdx]}"></div>
+        <div class="pd-thumbs">${p.images.map((img,i)=>`<img src="${img}" class="${i===currentImgIdx?'active':''}" onclick="setPdImg(${i})">`).join('')}</div>
+      </div>
+      <div>
+        ${p.badge?`<span class="card-badge" style="position:static;display:inline-block;margin-bottom:10px;">${p.badge}</span>`:''}
+        <div class="cat">${p.category}</div>
+        <h1>${p.name}</h1>
+        <div class="pd-price">${p.mrp>p.price?`<s style="color:#b7a3ae;font-size:16px;margin-right:8px;">${money(p.mrp)}</s>`:''}${money(p.price)} ${settings.showGST?`<span style="font-size:12px;color:#8a7480;">(incl. GST)</span>`:''}</div>
+        <p class="pd-desc">${p.desc||''}</p>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <label style="margin:0;">Select Size</label>
+          <a onclick="openSizeGuide()" style="font-size:11px;text-decoration:underline;cursor:pointer;color:var(--rose);">Size Guide</a>
+        </div>
+        <div class="size-row" id="sizeRow">${sizes.map((s,i)=>`<div class="size-chip ${i===0?'active':''}" onclick="selectSize(this)">${s}</div>`).join('')}</div>
+        <button class="btn full-btn" onclick="addToCart('${p.id}')" ${p.stock<=0?'disabled':''}>${p.stock<=0?'Out of Stock':'Add to Bag — '+money(p.price)}</button>
+        ${p.stock<=0?`<div style="margin-top:10px;display:flex;gap:8px;"><input type="email" id="notifyEmail" placeholder="Your email" style="flex:1;padding:9px;border:1px solid var(--stone);border-radius:6px;font-size:12px;"><button class="mini-btn" onclick="notifyMe('${p.id}')">Notify Me</button></div>`:''}
+        <div class="stock-note">${p.stock>0? p.stock+' in stock · ships in 2-3 days' : 'Currently out of stock'}</div>
+        ${p.stock>0 && p.stock<=5?`<span class="urgency">🔥 Selling fast — only ${p.stock} left</span>`:''}
+        ${renderRelated(p)}
+        <div id="reviewsBlock"></div>
+      </div>
+    </div>`;
+
+  trackRecentlyViewed(p.id);
+  loadReviewsFor(p.id);
+  currentProduct = p; // used by submitReview()
+}
+
+function setPdImg(i){ currentImgIdx=i; renderProductPage(); }
+
+// Re-render once products arrive from Firestore, and whenever they update
+function onProductsLoaded(){
+  if(_pid) renderProductPage();
+}
+
+init();
+</script>
+
+</body>
+</html>

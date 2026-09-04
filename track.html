@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Track Your Order — ACH Boutique</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+#trackModalBg{position:static !important;background:none !important;opacity:1 !important;pointer-events:auto !important;padding:0 !important;display:block !important;}
+#trackModalBg .modal{max-width:520px;margin:0 auto;box-shadow:0 10px 40px rgba(58,46,56,0.08);border-radius:20px;border:1px solid var(--stone);}
+#trackModalBg .modal-close{display:none;}
+</style>
+</head>
+<body>
+
+<div id="chrome-header"></div>
+
+<div class="page-wrap">
+  <div class="breadcrumb"><a href="index.html">Shop</a> / Track Order</div>
+  <div class="modal-bg" id="trackModalBg">
+    <div class="modal narrow">
+      <div style="padding:34px;">
+        <h2 style="margin-bottom:6px;">Track Your Order</h2>
+        <p style="font-size:13px;color:#8a7480;margin-bottom:20px;">Enter your Order ID and the phone number used at checkout.</p>
+        <div class="field" style="margin-bottom:12px;"><input type="text" id="trackOrderId" placeholder="Order ID e.g. ACH12345678" style="width:100%;padding:11px 12px;border:1px solid var(--stone);border-radius:8px;background:var(--ivory);"></div>
+        <div class="field" style="margin-bottom:14px;"><input type="text" id="trackPhone" placeholder="Phone number" style="width:100%;padding:11px 12px;border:1px solid var(--stone);border-radius:8px;background:var(--ivory);"></div>
+        <button class="btn full-btn" onclick="runTrackOrder()">Track Order</button>
+        <div id="trackResult" style="margin-top:20px;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="chrome-footer"></div>
+<div id="chrome-overlays"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>emailjs.init('I4iWZBJq_43MymLwS');</script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="shared.js"></script>
+<script src="chrome.js"></script>
+<script>
+injectSharedChrome();
+(function(){
+  const overlayTrack = document.querySelectorAll('#chrome-overlays #trackModalBg');
+  if(overlayTrack.length) overlayTrack[0].id = 'trackModalBgMini';
+})();
+init();
+</script>
+
+</body>
+</html>

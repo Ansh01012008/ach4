@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="pageTitle">Shop by Category — ACH Boutique</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+</head>
+<body>
+
+<div id="chrome-header"></div>
+
+<div class="page-wrap" style="padding-bottom:0;">
+  <div class="breadcrumb"><a href="index.html">Shop</a> / <span id="crumbCat">Category</span></div>
+</div>
+
+<section class="section" id="shop" style="padding-top:0;">
+  <div class="section-head">
+    <div><h2 id="catHeading">Category</h2></div>
+  </div>
+  <div class="filter-bar" id="filterBar"></div>
+  <div class="toolbar">
+    <div class="price-range">
+      <span>Up to ₹<span id="priceLabel">6000</span></span>
+      <input type="range" min="500" max="6000" step="100" value="6000" id="priceSlider" oninput="onPriceChange(this.value)">
+    </div>
+    <select id="sortSelect" onchange="renderGrid()">
+      <option value="popular">Sort: Popular</option>
+      <option value="low">Price: Low to High</option>
+      <option value="high">Price: High to Low</option>
+      <option value="new">Newest First</option>
+    </select>
+  </div>
+  <div class="grid" id="productGrid"><div class="loading-note"><div class="spinner-sm"></div>Loading…</div></div>
+</section>
+
+<div id="chrome-footer"></div>
+<div id="chrome-overlays"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>emailjs.init('I4iWZBJq_43MymLwS');</script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="shared.js"></script>
+<script src="chrome.js"></script>
+<script>
+injectSharedChrome();
+const _cat = new URLSearchParams(window.location.search).get('c') || 'all';
+currentFilter = _cat;
+document.getElementById('catHeading').textContent = _cat==='all' ? 'All Products' : _cat;
+document.getElementById('crumbCat').textContent = _cat==='all' ? 'All Products' : _cat;
+document.getElementById('pageTitle').textContent = (_cat==='all'?'All Products':_cat) + ' — ACH Boutique';
+
+function onProductsLoaded(){
+  renderFilterBar();
+  renderGrid();
+}
+init();
+</script>
+
+</body>
+</html>

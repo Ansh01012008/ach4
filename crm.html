@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CRM — ACH Boutique Admin</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script src="config.js"></script>
+<style>
+body{display:flex;min-height:100vh;background:var(--ivory);}
+.sidebar{width:220px;background:var(--white);border-right:1px solid var(--stone);padding:24px 12px;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.sidebar .logo{font-family:'Fraunces',serif;font-size:20px;padding:0 12px;margin-bottom:24px;display:block;}
+.sidebar a{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;font-size:14px;color:#8a7480;transition:.15s;margin-bottom:4px;}
+.sidebar a:hover,.sidebar a.active{background:var(--blush);color:var(--charcoal);}
+.main{flex:1;padding:32px;overflow-y:auto;}
+.top-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;}
+.top-bar h1{font-family:'Fraunces',serif;font-size:26px;}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px;}
+.stat{background:var(--white);border-radius:14px;padding:20px;text-align:center;box-shadow:0 2px 10px rgba(58,46,56,.06);}
+.stat .num{font-family:'Fraunces',serif;font-size:28px;margin-bottom:4px;}
+.stat .lbl{font-size:12px;color:#8a7480;}
+.search-filter{display:flex;gap:12px;margin-bottom:20px;}
+.search-filter input{flex:1;padding:10px 16px;border:1px solid var(--stone);border-radius:8px;font-size:14px;background:var(--white);}
+.search-filter select{padding:10px 14px;border:1px solid var(--stone);border-radius:8px;font-size:13px;background:var(--white);}
+table{width:100%;border-collapse:collapse;background:var(--white);border-radius:16px;overflow:hidden;box-shadow:0 2px 10px rgba(58,46,56,.06);}
+thead th{background:var(--blush);padding:12px 16px;text-align:left;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#8a7480;}
+tbody tr{border-bottom:1px solid var(--stone);transition:.1s;}
+tbody tr:hover{background:var(--ivory);}
+tbody td{padding:12px 16px;font-size:13px;}
+tbody tr:last-child{border-bottom:none;}
+.tag{display:inline-block;padding:2px 10px;border-radius:10px;font-size:11px;font-weight:500;}
+.tag.vip{background:#fff3cd;color:#7a5f2a;}
+.tag.regular{background:#e8f4fd;color:#185fa5;}
+.tag.new{background:#eef6ef;color:#3f6b41;}
+.action-btn{padding:5px 12px;border:1px solid var(--stone);border-radius:6px;font-size:12px;background:var(--white);cursor:pointer;}
+.action-btn:hover{background:var(--blush);}
+
+/* Customer detail panel */
+.detail-overlay{position:fixed;inset:0;background:rgba(35,32,25,.5);z-index:100;display:none;align-items:flex-start;justify-content:flex-end;}
+.detail-overlay.show{display:flex;}
+.detail-panel{background:var(--white);width:480px;height:100vh;overflow-y:auto;padding:32px;animation:slideIn .25s ease;}
+@keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}
+.detail-close{position:absolute;top:20px;right:24px;font-size:22px;cursor:pointer;color:#8a7480;}
+.cust-avatar{width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,var(--rose),var(--lavender-deep));
+  display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-size:22px;color:#fff;margin-bottom:12px;}
+.detail-section{margin-top:24px;padding-top:20px;border-top:1px solid var(--stone);}
+.detail-section h3{font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#8a7480;margin-bottom:14px;}
+.order-mini{border:1px solid var(--stone);border-radius:10px;padding:12px;margin-bottom:8px;}
+.email-form textarea{width:100%;padding:12px;border:1px solid var(--stone);border-radius:8px;font-size:13px;resize:vertical;min-height:80px;font-family:inherit;background:var(--ivory);}
+.email-form input{width:100%;padding:10px 12px;border:1px solid var(--stone);border-radius:8px;font-size:13px;margin-bottom:8px;background:var(--ivory);}
+</style>
+</head>
+<body>
+<div class="sidebar">
+  <a href="admin.html" class="logo">ACH Admin</a>
+  <a href="admin.html">📊 Dashboard</a>
+  <a href="admin.html#orders">📦 Orders</a>
+  <a href="crm.html" class="active">👥 Customers</a>
+  <a href="shipping.html">🚚 Shipping</a>
+  <a href="admin.html#products">👗 Products</a>
+  <a href="admin.html#analytics">📈 Analytics</a>
+  <a href="shop.html" target="_blank">🛍 View Shop</a>
+</div>
+
+<div class="main">
+  <div class="top-bar">
+    <h1>Customer CRM</h1>
+    <button class="btn" onclick="exportCSV()">Export CSV</button>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat"><div class="num" id="statTotal">—</div><div class="lbl">Total Customers</div></div>
+    <div class="stat"><div class="num" id="statVip">—</div><div class="lbl">VIP (₹5k+)</div></div>
+    <div class="stat"><div class="num" id="statNew">—</div><div class="lbl">New This Month</div></div>
+    <div class="stat"><div class="num" id="statAvgLtv">—</div><div class="lbl">Avg Lifetime Value</div></div>
+  </div>
+
+  <div class="search-filter">
+    <input type="text" id="crmSearch" placeholder="Search by name, phone, or email…" oninput="renderTable()">
+    <select id="crmSort" onchange="renderTable()">
+      <option value="ltv">Highest Spend</option>
+      <option value="orders">Most Orders</option>
+      <option value="recent">Most Recent</option>
+      <option value="new">Newest Customers</option>
+    </select>
+    <select id="crmFilter" onchange="renderTable()">
+      <option value="all">All Customers</option>
+      <option value="vip">VIP only</option>
+      <option value="regular">Regular</option>
+      <option value="new">New (1 order)</option>
+    </select>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Customer</th>
+        <th>Phone</th>
+        <th>Orders</th>
+        <th>Lifetime Value</th>
+        <th>Last Order</th>
+        <th>Segment</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="crmTable"></tbody>
+  </table>
+</div>
+
+<!-- Customer detail panel -->
+<div class="detail-overlay" id="detailOverlay" onclick="closeDetail(event)">
+  <div class="detail-panel" id="detailPanel">
+    <span class="detail-close" onclick="closeDetail()">✕</span>
+    <div id="detailContent"></div>
+  </div>
+</div>
+
+<script>
+emailjs.init('I4iWZBJq_43MymLwS');
+
+let customers = [];
+let orders = [];
+let allProducts = [];
+
+async function init(){
+  const [ordSnap] = await Promise.all([
+    db.collection('orders').orderBy('date','desc').get()
+  ]);
+  orders = ordSnap.docs.map(d=>({id:d.id,...d.data()}));
+  buildCustomers();
+  renderStats();
+  renderTable();
+}
+
+function buildCustomers(){
+  const map = {};
+  orders.forEach(o=>{
+    const key = o.customer?.phone||o.uid||'unknown';
+    if(!map[key]) map[key] = {
+      name: o.customer?.name||'—',
+      phone: o.customer?.phone||'—',
+      email: o.customer?.email||'—',
+      uid: o.uid||null,
+      orders: [], ltv: 0,
+      firstOrder: o.date, lastOrder: o.date
+    };
+    map[key].orders.push(o);
+    map[key].ltv += (o.total||0);
+    if(o.date < map[key].firstOrder) map[key].firstOrder = o.date;
+    if(o.date > map[key].lastOrder)  map[key].lastOrder  = o.date;
+  });
+  customers = Object.values(map);
+}
+
+function segment(c){
+  if(c.ltv>=5000) return 'vip';
+  if(c.orders.length===1) return 'new';
+  return 'regular';
+}
+
+function renderStats(){
+  const thisMonth = new Date().toISOString().slice(0,7);
+  const vip = customers.filter(c=>c.ltv>=5000).length;
+  const newC = customers.filter(c=>c.firstOrder.startsWith(thisMonth)).length;
+  const avgLtv = customers.length ? Math.round(customers.reduce((s,c)=>s+c.ltv,0)/customers.length) : 0;
+  document.getElementById('statTotal').textContent = customers.length;
+  document.getElementById('statVip').textContent = vip;
+  document.getElementById('statNew').textContent = newC;
+  document.getElementById('statAvgLtv').textContent = money(avgLtv);
+}
+
+function renderTable(){
+  const q = document.getElementById('crmSearch').value.toLowerCase();
+  const sort = document.getElementById('crmSort').value;
+  const filter = document.getElementById('crmFilter').value;
+
+  let list = customers.filter(c=>{
+    if(q && !c.name.toLowerCase().includes(q) && !c.phone.includes(q) && !c.email.toLowerCase().includes(q)) return false;
+    if(filter!=='all' && segment(c)!==filter) return false;
+    return true;
+  });
+
+  if(sort==='ltv')    list.sort((a,b)=>b.ltv-a.ltv);
+  if(sort==='orders') list.sort((a,b)=>b.orders.length-a.orders.length);
+  if(sort==='recent') list.sort((a,b)=>new Date(b.lastOrder)-new Date(a.lastOrder));
+  if(sort==='new')    list.sort((a,b)=>new Date(b.firstOrder)-new Date(a.firstOrder));
+
+  const tbody = document.getElementById('crmTable');
+  if(list.length===0){
+    tbody.innerHTML=`<tr><td colspan="7" style="text-align:center;padding:40px;color:#8a7480;">No customers found</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = list.map(c=>{
+    const seg = segment(c);
+    const tagColor = {vip:'vip',regular:'regular',new:'new'}[seg];
+    return `<tr>
+      <td><div style="font-weight:500;">${c.name}</div><div style="font-size:11px;color:#8a7480;">${c.email}</div></td>
+      <td>${c.phone}</td>
+      <td>${c.orders.length}</td>
+      <td style="font-weight:600;">${money(c.ltv)}</td>
+      <td style="color:#8a7480;">${new Date(c.lastOrder).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</td>
+      <td><span class="tag ${tagColor}">${seg.toUpperCase()}</span></td>
+      <td>
+        <button class="action-btn" onclick="openDetail(${JSON.stringify(c).split('"').join('&quot;')})">View</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function openDetail(c){
+  const seg = segment(c);
+  const ordersHtml = c.orders.slice(0,5).map(o=>`
+    <div class="order-mini">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+        <span style="font-size:12px;font-family:monospace;">${o.id}</span>
+        <span style="font-size:12px;font-weight:600;">${money(o.total)}</span>
+      </div>
+      <div style="font-size:12px;color:#8a7480;">
+        ${new Date(o.date).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})} ·
+        ${o.status} · ${o.payment}
+      </div>
+    </div>`).join('');
+
+  document.getElementById('detailContent').innerHTML = `
+    <div class="cust-avatar">${c.name?c.name[0].toUpperCase():'?'}</div>
+    <h2 style="font-family:'Fraunces',serif;font-size:22px;margin-bottom:4px;">${c.name}</h2>
+    <div style="font-size:13px;color:#8a7480;margin-bottom:6px;">${c.phone}</div>
+    <div style="font-size:13px;color:#8a7480;margin-bottom:16px;">${c.email}</div>
+    <span class="tag ${seg}">${seg.toUpperCase()}</span>
+
+    <div class="detail-section">
+      <h3>Stats</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div style="background:var(--blush);border-radius:10px;padding:12px;text-align:center;">
+          <div style="font-size:22px;font-weight:600;">${c.orders.length}</div>
+          <div style="font-size:11px;color:#8a7480;">Total Orders</div>
+        </div>
+        <div style="background:var(--blush);border-radius:10px;padding:12px;text-align:center;">
+          <div style="font-size:22px;font-weight:600;">${money(c.ltv)}</div>
+          <div style="font-size:11px;color:#8a7480;">Lifetime Value</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-section">
+      <h3>Recent Orders</h3>
+      ${ordersHtml}
+      ${c.orders.length>5?`<div style="font-size:12px;color:#8a7480;text-align:center;margin-top:8px;">+${c.orders.length-5} more orders</div>`:''}
+    </div>
+
+    ${c.email&&c.email!=='—'?`
+    <div class="detail-section">
+      <h3>Send Email</h3>
+      <div class="email-form">
+        <input id="emailSubj" placeholder="Subject" value="A note from ACH Boutique">
+        <textarea id="emailBody" placeholder="Your message to ${c.name}…"></textarea>
+        <button class="btn" style="width:100%;margin-top:8px;" onclick="sendCrmEmail('${c.email}','${c.name}')">Send Email</button>
+      </div>
+    </div>`:''}
+  `;
+  document.getElementById('detailOverlay').classList.add('show');
+}
+
+async function sendCrmEmail(email, name){
+  const subj = document.getElementById('emailSubj').value;
+  const body = document.getElementById('emailBody').value;
+  if(!body.trim()){ showToast('Please write a message.'); return; }
+  try{
+    await emailjs.send('service_xu0ot7h','template_336mhcg',{
+      to_email: email, to_name: name,
+      otp_code: body, order_note: subj
+    });
+    showToast(`Email sent to ${name} ✓`);
+    document.getElementById('emailBody').value='';
+  }catch(e){ showToast('Email failed. Try again.'); console.error(e); }
+}
+
+function closeDetail(e){
+  if(!e || e.target===document.getElementById('detailOverlay') || e.target.classList.contains('detail-close'))
+    document.getElementById('detailOverlay').classList.remove('show');
+}
+
+function exportCSV(){
+  const rows = [['Name','Phone','Email','Orders','Lifetime Value','Last Order','Segment']];
+  customers.forEach(c=>rows.push([
+    c.name, c.phone, c.email, c.orders.length, c.ltv,
+    new Date(c.lastOrder).toLocaleDateString('en-IN'), segment(c)
+  ]));
+  const csv = rows.map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'ach-customers-'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+}
+
+init();
+</script>
+</body>
+</html>

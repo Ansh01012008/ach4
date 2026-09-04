@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Search — ACH Boutique</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+#searchModalBg{position:static !important;background:none !important;opacity:1 !important;pointer-events:auto !important;padding:0 !important;display:block !important;}
+#searchModalBg .modal{max-width:640px;margin:0 auto;box-shadow:0 10px 40px rgba(58,46,56,0.08);border-radius:20px;border:1px solid var(--stone);}
+#searchModalBg .modal-close{display:none;}
+</style>
+</head>
+<body>
+
+<div id="chrome-header"></div>
+
+<div class="page-wrap">
+  <div class="breadcrumb"><a href="index.html">Shop</a> / Search</div>
+  <h1 class="page-title">Search</h1>
+  <div class="modal-bg" id="searchModalBg">
+    <div class="modal narrow" style="max-width:640px;">
+      <div style="padding:34px;">
+        <input type="text" id="searchInput" placeholder="Search products, categories…" oninput="runSearch()" style="width:100%;padding:14px;border:1px solid var(--stone);border-radius:10px;font-size:16px;background:var(--ivory);margin-bottom:20px;">
+        <div id="searchResults"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="chrome-footer"></div>
+<div id="chrome-overlays"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>emailjs.init('I4iWZBJq_43MymLwS');</script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="shared.js"></script>
+<script src="chrome.js"></script>
+<script>
+injectSharedChrome();
+(function(){
+  const overlaySearch = document.querySelectorAll('#chrome-overlays #searchModalBg');
+  if(overlaySearch.length) overlaySearch[0].id = 'searchModalBgMini';
+})();
+// If arrived with ?q=, pre-fill and search
+const _q = new URLSearchParams(window.location.search).get('q');
+function onProductsLoaded(){
+  if(_q){ document.getElementById('searchInput').value = _q; runSearch(); }
+}
+init();
+document.getElementById('searchInput').focus();
+</script>
+
+</body>
+</html>

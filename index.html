@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ACH Boutique — Quiet Luxury, Handcrafted in Small Batches</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+</head>
+<body>
+
+<div id="chrome-header"></div>
+
+<section class="hero">
+  <div class="hero-blob b1"></div>
+  <div class="hero-blob b2"></div>
+  <div>
+    <div class="hero-eyebrow" id="heroEyebrow">— Festive Edit, 2026</div>
+    <h1 id="heroTitle">Quiet luxury, cut for real life.</h1>
+    <p id="heroSubtitle">ACH Boutique brings together small-batch textiles and considered silhouettes — pieces made to be worn for years, not seasons.</p>
+    <a href="#shop" class="btn" onclick="scrollToSection('shop')">Shop the Edit</a>
+  </div>
+  <div class="hero-visual"></div>
+</section>
+
+<div class="cat-tiles" id="catTiles"></div>
+
+<section class="section" id="shop">
+  <div class="section-head">
+    <div><h2>The Collection</h2></div>
+    <p>Every piece is finished by hand in small runs — expect natural variation in weave and dye.</p>
+  </div>
+  <div class="filter-bar" id="filterBar"></div>
+  <div class="toolbar">
+    <div class="price-range">
+      <span>Up to ₹<span id="priceLabel">6000</span></span>
+      <input type="range" min="500" max="6000" step="100" value="6000" id="priceSlider" oninput="onPriceChange(this.value)">
+    </div>
+    <select id="sortSelect" onchange="renderGrid()">
+      <option value="popular">Sort: Popular</option>
+      <option value="low">Price: Low to High</option>
+      <option value="high">Price: High to Low</option>
+      <option value="new">Newest First</option>
+    </select>
+  </div>
+  <div class="grid" id="productGrid"><div class="loading-note"><div class="spinner-sm"></div>Loading the collection…</div></div>
+</section>
+
+<div class="sale-banner">
+  <h2 id="saleTitle">Festive Edit — Up to 20% Off</h2>
+  <p id="saleSubtitle">Use code WELCOME10 at checkout · Offer ends soon</p>
+  <div class="countdown" id="countdown"></div>
+</div>
+
+<section class="section reveal" id="quiz">
+  <div class="quiz-card">
+    <h2 style="font-size:28px;margin-bottom:8px;">Find Your Style in 10 Seconds</h2>
+    <p style="font-size:13px;color:#5c4a55;">Answer one question, get a hand-picked edit.</p>
+    <div id="quizBody">
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="runQuiz('Ethnic')">✨ Ethnic Glam</div>
+        <div class="quiz-opt" onclick="runQuiz('Western')">👗 Everyday Western</div>
+        <div class="quiz-opt" onclick="runQuiz('Accessories')">💎 Accent Pieces</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section reveal" id="recentlyViewed" style="display:none;">
+  <div class="section-head"><div><h2>Recently Viewed</h2></div></div>
+  <div class="rv-row" id="rvRow"></div>
+</section>
+
+<section class="section reveal">
+  <div class="section-head"><div><h2>@achboutique</h2></div><p>Tag us in your ACH looks for a chance to be featured.</p></div>
+  <div class="insta-grid" id="instaGrid"></div>
+</section>
+
+<section class="testimonials reveal">
+  <div class="section">
+    <div class="section-head"><div><h2>From Our Customers</h2></div></div>
+    <div class="t-grid">
+      <div class="t-card"><div class="t-stars">★★★★★</div><p class="t-quote">The linen kurta fits exactly like the size chart promised — rare for handloom pieces. Wearing it on repeat.</p><div class="t-name">— Priya M., Indore</div></div>
+      <div class="t-card"><div class="t-stars">★★★★★</div><p class="t-quote">Packaging alone felt like a gift. The chiffon saree is even richer in person than in photos.</p><div class="t-name">— Kavita R., Bhopal</div></div>
+      <div class="t-card"><div class="t-stars">★★★★★</div><p class="t-quote">Ordered the co-ord set for a friend's wedding — got three compliments before I even sat down.</p><div class="t-name">— Ananya S., Pune</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="about-strip reveal" id="about">
+  <div class="section" id="aboutGrid"></div>
+</section>
+
+<section class="newsletter reveal">
+  <h2>Stay in the loop</h2>
+  <p>New drops, restocks and 10% off your first order — straight to your inbox.</p>
+  <div class="nl-row">
+    <input type="email" id="nlEmail" placeholder="you@email.com">
+    <button class="btn" onclick="subscribeNewsletter()">Subscribe</button>
+  </div>
+  <div class="nl-msg" id="nlMsg"></div>
+</section>
+
+<div id="chrome-footer"></div>
+<div id="chrome-overlays"></div>
+
+<!-- EmailJS -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>emailjs.init('I4iWZBJq_43MymLwS');</script>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+
+<script src="shared.js"></script>
+<script src="chrome.js"></script>
+<script>
+// Read ?filter=New from URL (used by header/footer "New In" links)
+const _urlParams = new URLSearchParams(window.location.search);
+if(_urlParams.get('filter')){ currentFilter = _urlParams.get('filter'); }
+
+injectSharedChrome();
+init();
+</script>
+
+</body>
+</html>

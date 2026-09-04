@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Shipping — ACH Boutique Admin</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script src="config.js"></script>
+<style>
+body{display:flex;min-height:100vh;background:var(--ivory);}
+.sidebar{width:220px;background:var(--white);border-right:1px solid var(--stone);padding:24px 12px;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.sidebar .logo{font-family:'Fraunces',serif;font-size:20px;padding:0 12px;margin-bottom:24px;display:block;}
+.sidebar a{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;font-size:14px;color:#8a7480;transition:.15s;margin-bottom:4px;}
+.sidebar a:hover,.sidebar a.active{background:var(--blush);color:var(--charcoal);}
+.main{flex:1;padding:32px;overflow-y:auto;}
+.top-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;}
+.top-bar h1{font-family:'Fraunces',serif;font-size:26px;}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px;}
+.stat{background:var(--white);border-radius:14px;padding:20px;text-align:center;box-shadow:0 2px 10px rgba(58,46,56,.06);}
+.stat .num{font-family:'Fraunces',serif;font-size:28px;margin-bottom:4px;}
+.stat .lbl{font-size:12px;color:#8a7480;}
+.tabs{display:flex;gap:0;border-bottom:2px solid var(--stone);margin-bottom:24px;}
+.tab{padding:10px 20px;font-size:14px;cursor:pointer;color:#8a7480;border-bottom:2px solid transparent;margin-bottom:-2px;transition:.15s;}
+.tab.active{color:var(--charcoal);border-bottom-color:var(--rose);font-weight:500;}
+.tab-panel{display:none;} .tab-panel.active{display:block;}
+table{width:100%;border-collapse:collapse;background:var(--white);border-radius:16px;overflow:hidden;box-shadow:0 2px 10px rgba(58,46,56,.06);}
+thead th{background:var(--blush);padding:12px 16px;text-align:left;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#8a7480;}
+tbody tr{border-bottom:1px solid var(--stone);}
+tbody tr:hover{background:var(--ivory);}
+tbody td{padding:12px 16px;font-size:13px;}
+tbody tr:last-child{border-bottom:none;}
+.badge{display:inline-block;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:500;}
+.badge.placed{background:#f3f0fa;color:#5c4a8a;}
+.badge.processing{background:#fff8ec;color:#7a5f2a;}
+.badge.shipped{background:#e6f1fb;color:#185fa5;}
+.badge.delivered{background:#eef6ef;color:#3f6b41;}
+.badge.cancelled{background:#fdecea;color:#b5473a;}
+.action-btn{padding:5px 12px;border:1px solid var(--stone);border-radius:6px;font-size:12px;background:var(--white);cursor:pointer;transition:.15s;white-space:nowrap;}
+.action-btn:hover{background:var(--blush);}
+.action-btn.primary{background:linear-gradient(120deg,var(--rose),var(--lavender-deep));color:#fff;border:none;}
+.action-btn.primary:hover{opacity:.88;}
+.action-btn.success{background:#eef6ef;border-color:#c9dfcb;color:#3f6b41;}
+.modal-bg{position:fixed;inset:0;background:rgba(35,32,25,.5);z-index:100;display:none;align-items:center;justify-content:center;padding:20px;}
+.modal-bg.show{display:flex;}
+.modal-box{background:var(--white);border-radius:18px;padding:32px;width:100%;max-width:500px;position:relative;}
+.modal-box h2{font-family:'Fraunces',serif;font-size:22px;margin-bottom:20px;}
+.modal-close{position:absolute;top:16px;right:20px;font-size:22px;cursor:pointer;color:#8a7480;background:none;border:none;}
+.courier-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;}
+.courier-card{border:2px solid var(--stone);border-radius:10px;padding:14px;text-align:center;cursor:pointer;transition:.15s;}
+.courier-card:hover,.courier-card.selected{border-color:var(--rose);background:var(--blush);}
+.courier-card .name{font-size:13px;font-weight:500;margin-top:6px;}
+.courier-card .rate{font-size:11px;color:#8a7480;}
+.note-box{background:var(--blush);border-radius:10px;padding:14px;font-size:13px;margin-bottom:16px;}
+.filter-row{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
+.filter-row input{flex:1;min-width:200px;padding:9px 14px;border:1px solid var(--stone);border-radius:8px;font-size:13px;}
+.filter-row select{padding:9px 14px;border:1px solid var(--stone);border-radius:8px;font-size:13px;background:var(--white);}
+.tracking-tag{font-size:11px;font-family:monospace;background:var(--ivory);padding:2px 8px;border-radius:4px;border:1px solid var(--stone);}
+.empty{text-align:center;padding:48px;color:#8a7480;font-size:14px;}
+</style>
+</head>
+<body>
+<div class="sidebar">
+  <a href="admin.html" class="logo">ACH Admin</a>
+  <a href="admin.html">📊 Dashboard</a>
+  <a href="admin.html#orders">📦 Orders</a>
+  <a href="crm.html">👥 Customers</a>
+  <a href="shipping.html" class="active">🚚 Shipping</a>
+  <a href="admin.html#products">👗 Products</a>
+  <a href="admin.html#analytics">📈 Analytics</a>
+  <a href="shop.html" target="_blank">🛍 View Shop</a>
+</div>
+
+<div class="main">
+  <div class="top-bar">
+    <h1>Shipping & Courier</h1>
+    <button class="btn" onclick="exportShipCSV()">Export CSV</button>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat"><div class="num" id="sPending">—</div><div class="lbl">Ready to Ship</div></div>
+    <div class="stat"><div class="num" id="sShipped">—</div><div class="lbl">In Transit</div></div>
+    <div class="stat"><div class="num" id="sDelivered">—</div><div class="lbl">Delivered Today</div></div>
+    <div class="stat"><div class="num" id="sCod">—</div><div class="lbl">COD Pending</div></div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('ready',this)">📬 Ready to Ship</div>
+    <div class="tab" onclick="switchTab('shipped',this)">🚚 In Transit</div>
+    <div class="tab" onclick="switchTab('delivered',this)">✅ Delivered</div>
+    <div class="tab" onclick="switchTab('all',this)">All Orders</div>
+  </div>
+
+  <div class="filter-row">
+    <input type="text" id="shipSearch" placeholder="Search by order ID, name, city…" oninput="renderShipping()">
+    <select id="shipPayFilter" onchange="renderShipping()">
+      <option value="all">All Payments</option>
+      <option value="COD">COD only</option>
+      <option value="UPI">UPI only</option>
+    </select>
+  </div>
+
+  <div id="shipTable"></div>
+</div>
+
+<!-- Book Courier Modal -->
+<div class="modal-bg" id="courierModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <h2>Book Shipment</h2>
+    <div class="note-box" id="courierOrderInfo"></div>
+    <div style="font-size:13px;font-weight:500;margin-bottom:12px;">Select Courier Partner</div>
+    <div class="courier-grid">
+      <div class="courier-card" onclick="selectCourier('Delhivery',this)">
+        <div style="font-size:28px;">📦</div>
+        <div class="name">Delhivery</div>
+        <div class="rate">₹45–80</div>
+      </div>
+      <div class="courier-card" onclick="selectCourier('BlueDart',this)">
+        <div style="font-size:28px;">🔵</div>
+        <div class="name">BlueDart</div>
+        <div class="rate">₹80–120</div>
+      </div>
+      <div class="courier-card" onclick="selectCourier('DTDC',this)">
+        <div style="font-size:28px;">🟡</div>
+        <div class="name">DTDC</div>
+        <div class="rate">₹40–70</div>
+      </div>
+      <div class="courier-card" onclick="selectCourier('Ekart',this)">
+        <div style="font-size:28px;">🟢</div>
+        <div class="name">Ekart</div>
+        <div class="rate">₹35–65</div>
+      </div>
+      <div class="courier-card" onclick="selectCourier('XpressBees',this)">
+        <div style="font-size:28px;">🐝</div>
+        <div class="name">XpressBees</div>
+        <div class="rate">₹45–75</div>
+      </div>
+      <div class="courier-card" onclick="selectCourier('India Post',this)">
+        <div style="font-size:28px;">📮</div>
+        <div class="name">India Post</div>
+        <div class="rate">₹25–50</div>
+      </div>
+    </div>
+    <div class="field">
+      <label style="font-size:12px;color:#8a7480;font-weight:600;letter-spacing:.04em;text-transform:uppercase;display:block;margin-bottom:6px;">
+        Custom AWB / Tracking Number (optional)
+      </label>
+      <input id="customAwb" placeholder="Leave blank to auto-generate"
+        style="width:100%;padding:10px 14px;border:1px solid var(--stone);border-radius:8px;font-size:14px;background:var(--ivory);">
+    </div>
+    <div style="display:flex;gap:10px;margin-top:20px;">
+      <button class="btn" style="flex:1;" id="bookBtn" onclick="confirmBooking()" disabled>Book Shipment</button>
+      <button class="btn btn-outline" style="flex:1;" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Mark Delivered Modal -->
+<div class="modal-bg" id="deliverModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeDeliverModal()">✕</button>
+    <h2>Mark as Delivered</h2>
+    <div class="note-box" id="deliverOrderInfo"></div>
+    <p style="font-size:13px;color:#8a7480;margin-bottom:20px;">Confirm that this shipment has been delivered to the customer. An email notification will be sent.</p>
+    <div style="display:flex;gap:10px;">
+      <button class="btn" style="flex:1;" onclick="confirmDelivered()">Confirm Delivered</button>
+      <button class="btn btn-outline" style="flex:1;" onclick="closeDeliverModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+emailjs.init('I4iWZBJq_43MymLwS');
+let allOrders = [];
+let activeTab  = 'ready';
+let selectedCourier = '';
+let activeOrderId = '';
+
+db.collection('orders').orderBy('date','desc').onSnapshot(snap=>{
+  allOrders = snap.docs.map(d=>({id:d.id,...d.data()}));
+  renderStats();
+  renderShipping();
+});
+
+function renderStats(){
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById('sPending').textContent   = allOrders.filter(o=>['Placed','Processing'].includes(o.status)&&o.paymentStatus!=='Pending Verification').length;
+  document.getElementById('sShipped').textContent   = allOrders.filter(o=>o.status==='Shipped').length;
+  document.getElementById('sDelivered').textContent = allOrders.filter(o=>o.status==='Delivered'&&(o.deliveredAt||'').startsWith(today)).length;
+  document.getElementById('sCod').textContent       = allOrders.filter(o=>o.payment==='COD'&&o.status==='Delivered').length;
+}
+
+function switchTab(tab, el){
+  activeTab = tab;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  renderShipping();
+}
+
+function renderShipping(){
+  const q   = document.getElementById('shipSearch').value.toLowerCase();
+  const pay = document.getElementById('shipPayFilter').value;
+  let list  = [...allOrders];
+
+  if(activeTab==='ready')     list = list.filter(o=>['Placed','Processing'].includes(o.status)&&o.paymentStatus!=='Pending Verification');
+  else if(activeTab==='shipped')   list = list.filter(o=>o.status==='Shipped');
+  else if(activeTab==='delivered') list = list.filter(o=>o.status==='Delivered');
+
+  if(q) list = list.filter(o=>
+    o.id.toLowerCase().includes(q)||
+    (o.customer?.name||'').toLowerCase().includes(q)||
+    (o.customer?.city||'').toLowerCase().includes(q)
+  );
+  if(pay!=='all') list = list.filter(o=>o.payment===pay);
+
+  if(list.length===0){
+    document.getElementById('shipTable').innerHTML=`<div class="empty">No orders in this category.</div>`;
+    return;
+  }
+
+  document.getElementById('shipTable').innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Order ID</th><th>Date</th><th>Customer</th><th>City</th>
+          <th>Items</th><th>Total</th><th>Payment</th><th>Courier</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${list.map(o=>`
+          <tr>
+            <td style="font-family:monospace;font-size:12px;">${o.id}</td>
+            <td style="color:#8a7480;font-size:12px;">${new Date(o.date).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</td>
+            <td>
+              <div style="font-weight:500;">${o.customer?.name||'—'}</div>
+              <div style="font-size:11px;color:#8a7480;">${o.customer?.phone||''}</div>
+            </td>
+            <td>${o.customer?.city||'—'}<br><span style="font-size:11px;color:#8a7480;">${o.customer?.pin||''}</span></td>
+            <td style="font-size:12px;">${(o.items||[]).map(i=>i.name+' ×'+i.qty).join(', ')}</td>
+            <td style="font-weight:600;">${money(o.total)}</td>
+            <td>
+              <span class="badge ${(o.status||'').toLowerCase()}">${o.status}</span><br>
+              <span style="font-size:11px;color:#8a7480;">${o.payment}</span>
+            </td>
+            <td>
+              ${o.trackingNumber
+                ? `<div style="font-size:12px;font-weight:500;">${o.courierName||'—'}</div>
+                   <span class="tracking-tag">${o.trackingNumber}</span>`
+                : '<span style="color:#8a7480;font-size:12px;">Not booked</span>'}
+            </td>
+            <td>
+              <div style="display:flex;flex-direction:column;gap:5px;">
+                ${!o.trackingNumber && ['Placed','Processing'].includes(o.status)
+                  ? `<button class="action-btn primary" onclick="openCourierModal('${o.id}')">🚚 Book</button>`
+                  : ''}
+                ${o.status==='Shipped'
+                  ? `<button class="action-btn success" onclick="openDeliverModal('${o.id}')">✅ Delivered</button>`
+                  : ''}
+                ${o.status==='Placed'
+                  ? `<button class="action-btn" onclick="markProcessing('${o.id}')">Mark Processing</button>`
+                  : ''}
+              </div>
+            </td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+/* ---- COURIER MODAL ---- */
+function openCourierModal(orderId){
+  activeOrderId = orderId;
+  selectedCourier = '';
+  document.getElementById('bookBtn').disabled = true;
+  document.getElementById('customAwb').value = '';
+  document.querySelectorAll('.courier-card').forEach(c=>c.classList.remove('selected'));
+  const o = allOrders.find(o=>o.id===orderId);
+  document.getElementById('courierOrderInfo').innerHTML = `
+    <b>${o.id}</b> · ${o.customer?.name} · ${o.customer?.city} ${o.customer?.pin}<br>
+    <span style="color:#8a7480;">Items: ${(o.items||[]).map(i=>i.name+' ×'+i.qty).join(', ')}</span>`;
+  document.getElementById('courierModal').classList.add('show');
+}
+
+function selectCourier(name, el){
+  selectedCourier = name;
+  document.querySelectorAll('.courier-card').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('bookBtn').disabled = false;
+}
+
+async function confirmBooking(){
+  if(!selectedCourier) return;
+  const btn = document.getElementById('bookBtn');
+  btn.disabled=true; btn.textContent='Booking…';
+  const customAwb = document.getElementById('customAwb').value.trim();
+  const awb = customAwb || ('AWB'+Date.now().toString().slice(-10));
+  try{
+    await db.collection('orders').doc(activeOrderId).update({
+      status:'Shipped', trackingNumber:awb,
+      courierName:selectedCourier, shippedAt:new Date().toISOString()
+    });
+    const o = allOrders.find(o=>o.id===activeOrderId);
+    if(o && o.customer?.email){
+      sendStatusEmail({...o, trackingNumber:awb, courierName:selectedCourier},'Shipped');
+    }
+    closeModal();
+    showToast(`Shipment booked with ${selectedCourier} · AWB: ${awb}`);
+  }catch(e){ showToast('Booking failed. Try again.'); }
+  btn.disabled=false; btn.textContent='Book Shipment';
+}
+
+function closeModal(){
+  document.getElementById('courierModal').classList.remove('show');
+}
+
+/* ---- DELIVER MODAL ---- */
+function openDeliverModal(orderId){
+  activeOrderId = orderId;
+  const o = allOrders.find(o=>o.id===orderId);
+  document.getElementById('deliverOrderInfo').innerHTML = `
+    <b>${o.id}</b> · ${o.customer?.name} · ${o.customer?.city}<br>
+    <span style="color:#8a7480;">Courier: ${o.courierName||'—'} · AWB: ${o.trackingNumber||'—'}</span>`;
+  document.getElementById('deliverModal').classList.add('show');
+}
+
+async function confirmDelivered(){
+  try{
+    await db.collection('orders').doc(activeOrderId).update({
+      status:'Delivered', deliveredAt:new Date().toISOString()
+    });
+    const o = allOrders.find(o=>o.id===activeOrderId);
+    if(o && o.customer?.email) sendStatusEmail(o,'Delivered');
+    closeDeliverModal();
+    showToast('Order marked as delivered. Customer notified.');
+  }catch(e){ showToast('Failed. Try again.'); }
+}
+
+function closeDeliverModal(){
+  document.getElementById('deliverModal').classList.remove('show');
+}
+
+async function markProcessing(orderId){
+  await db.collection('orders').doc(orderId).update({status:'Processing'});
+  showToast('Order marked as Processing.');
+}
+
+function sendStatusEmail(order, status){
+  const tracking = order.trackingNumber
+    ? `\nCourier: ${order.courierName} · AWB: ${order.trackingNumber}` : '';
+  const msg = status==='Shipped'
+    ? `Great news! Your order ${order.id} has been shipped.\n\nShipping to: ${order.customer.address}, ${order.customer.city} — ${order.customer.pin}${tracking}\n\nThank you for shopping with ACH Boutique!`
+    : `Your order ${order.id} has been delivered! We hope you love your purchase.\n\nThank you for shopping with ACH Boutique. Please share your feedback!`;
+  emailjs.send('service_xu0ot7h','template_336mhcg',{
+    to_email:order.customer.email, to_name:order.customer.name,
+    otp_code:msg, order_note:`Order ${order.id} — ${status}`
+  }).catch(e=>console.warn('Status email failed:',e));
+}
+
+function exportShipCSV(){
+  const rows=[['Order ID','Date','Customer','Phone','City','Pincode','Items','Total','Payment','Status','Courier','AWB','Shipped At']];
+  allOrders.forEach(o=>rows.push([
+    o.id, new Date(o.date).toLocaleDateString('en-IN'),
+    o.customer?.name||'', o.customer?.phone||'', o.customer?.city||'', o.customer?.pin||'',
+    (o.items||[]).map(i=>i.name+' x'+i.qty).join(' | '),
+    o.total, o.payment, o.status,
+    o.courierName||'', o.trackingNumber||'', o.shippedAt||''
+  ]));
+  const csv = rows.map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download = 'ach-shipments-'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+}
+</script>
+</body>
+</html>
