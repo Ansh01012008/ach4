@@ -68,7 +68,9 @@ const DEFAULT_SETTINGS = {
     {label:'15% OFF', type:'percent', value:15, weight:12, code:'SPIN15'},
     {label:'5% OFF', type:'percent', value:5, weight:25, code:'SPIN5'},
     {label:'Try Again', type:'none', value:0, weight:10, code:''}
-  ]
+  ],
+  paymentUpiId:'', paymentQrImage:'',
+  paymentBank:{ accountName:'', accountNumber:'', ifsc:'', bankName:'' }
 };
 const WHEEL_COLORS = ['#e08ba8','#b79ee0','#eab3c6','#e08ba8','#b79ee0','#eab3c6','#e08ba8','#b79ee0'];
 
@@ -83,7 +85,7 @@ let appliedCoupon = null;
 let currentFilter = 'all';
 let currentProduct = null;
 let currentImgIdx = 0;
-let selectedPayment = 'cod';
+let selectedPayment = 'upi';
 let shippingData = null;
 let priceMax = 6000;
 let pickedStars = 5;
@@ -517,7 +519,7 @@ function renderCheckoutStep1(){
         <div class="form-grid">
           <div class="field"><label>Full Name</label><input required id="ckName" value="${shippingData?.name||''}"></div>
           <div class="field"><label>Phone Number</label><input required id="ckPhone" type="tel" pattern="[0-9]{10}" maxlength="10" placeholder="10-digit mobile number" value="${shippingData?.phone||''}"></div>
-          <div class="field full"><label>Email</label><input required id="ckEmail" type="email" value="${shippingData?.email||''}"></div>
+          <div class="field full"><label>Email <span style="font-weight:400;color:#8a7480;">(optional — for order updates)</span></label><input id="ckEmail" type="email" value="${shippingData?.email||''}"></div>
           <div class="field full"><label>Address</label><input required id="ckAddress" value="${shippingData?.address||''}"></div>
           <div class="field"><label>City</label><input required id="ckCity" value="${shippingData?.city||''}"></div>
           <div class="field"><label>Pincode</label><input required id="ckPin" value="${shippingData?.pin||''}"></div>
@@ -609,6 +611,20 @@ function startEmailCooldown(){
   tick();
 }
 
+/* Remembers emails already OTP-verified on this device so we never ask twice */
+function isEmailPreVerified(email){
+  if(!email) return false;
+  const list = loadLS('ach_verified_emails', []);
+  return list.some(e => e.toLowerCase() === email.toLowerCase());
+}
+function rememberVerifiedEmail(email){
+  const list = loadLS('ach_verified_emails', []);
+  if(!list.some(e => e.toLowerCase() === email.toLowerCase())){
+    list.push(email);
+    saveLS('ach_verified_emails', list);
+  }
+}
+
 function verifyEmailOtp(){
   const input = document.getElementById('otpInput_email').value.trim();
   const errEl = document.getElementById('otpErr_email');
@@ -616,6 +632,7 @@ function verifyEmailOtp(){
   if(input !== otpState.email.code){ errEl.textContent = 'Incorrect code. Please try again.'; return; }
   errEl.textContent = '';
   otpState.email.verified = true;
+  rememberVerifiedEmail(shippingData.email);
   renderCheckoutStep1b();
 }
 
@@ -623,8 +640,25 @@ function renderCheckoutStep1b(){
   /* Phone is verified via Firebase Auth — mark it immediately */
   autoVerifyPhone();
 
-  /* Send email OTP on first render only */
-  if(!otpState.email.code && !otpState.email.sending){
+  const email = (shippingData.email||'').trim();
+  const emailProvided = email.length > 0;
+
+  /* Reset OTP state if the email changed since we last sent/verified a code */
+  if(otpState.email.forEmail !== email){
+    otpState.email = { code:null, verified:false, cooldown:0, sending:false, forEmail: email };
+  }
+
+  /* No email given → nothing to verify, skip straight past this step's email block */
+  if(!emailProvided){
+    otpState.email.verified = true;
+  }
+  /* Email given and already verified on this device before → skip OTP, don't ask again */
+  else if(isEmailPreVerified(email)){
+    otpState.email.verified = true;
+  }
+  /* Otherwise, send a fresh OTP on first render only */
+  else if(!otpState.email.code && !otpState.email.sending){
+    otpState.email.verified = false;
     sendEmailOtp();
   }
 
@@ -634,8 +668,8 @@ function renderCheckoutStep1b(){
     <button class="modal-close" onclick="closeModal('checkoutModalBg')">✕</button>
     <div class="checkout-shell">
       ${stepperHtml(2)}
-      <h3 style="margin-bottom:6px;">Verify Your Email</h3>
-      <p style="font-size:13px;color:#8a7480;margin-bottom:20px;">Your mobile is already verified. Just confirm your email to continue.</p>
+      <h3 style="margin-bottom:6px;">Verify Your Details</h3>
+      <p style="font-size:13px;color:#8a7480;margin-bottom:20px;">Your mobile is already verified.${emailProvided?' Just confirm your email to continue.':''}</p>
 
       <!-- Phone: auto-verified, shown as done -->
       <div style="border:1px solid #c9dfcb;border-radius:12px;padding:14px 18px;margin-bottom:14px;background:#eef6ef;display:flex;align-items:center;gap:10px;">
@@ -646,27 +680,40 @@ function renderCheckoutStep1b(){
         </div>
       </div>
 
-      <!-- Email: real OTP via Brevo -->
-      <div style="border:1px solid var(--stone);border-radius:12px;padding:18px;margin-bottom:16px;background:${otpState.email.verified?'#eef6ef':'#fff'};">
+      ${!emailProvided ? `
+      <div style="border:1px solid var(--stone);border-radius:12px;padding:14px 18px;margin-bottom:16px;background:#fff;display:flex;align-items:center;gap:10px;">
+        <span style="font-size:18px;">✉️</span>
+        <div style="font-size:12px;color:#8a7480;">No email provided — you'll only get order updates by SMS.</div>
+      </div>
+      ` : otpState.email.verified ? `
+      <div style="border:1px solid #c9dfcb;border-radius:12px;padding:14px 18px;margin-bottom:16px;background:#eef6ef;display:flex;align-items:center;gap:10px;">
+        <span style="font-size:18px;">✉️</span>
+        <div>
+          <div style="font-size:13px;font-weight:500;">Email: ${email}</div>
+          <div style="font-size:12px;color:var(--moss);">✓ Verified${isEmailPreVerified(email)?' previously':''}</div>
+        </div>
+      </div>
+      ` : `
+      <!-- Email: real OTP via EmailJS -->
+      <div style="border:1px solid var(--stone);border-radius:12px;padding:18px;margin-bottom:16px;background:#fff;">
         <div style="display:flex;justify-content:space-between;align-items:center;">
           <div>
-            <div style="font-size:13px;font-weight:500;">✉️ Email: ${shippingData.email}</div>
-            ${otpState.email.verified?'<div style="font-size:12px;color:var(--moss);margin-top:2px;">✓ Verified</div>':'<div style="font-size:12px;color:#8a7480;margin-top:2px;">OTP sent to your inbox</div>'}
+            <div style="font-size:13px;font-weight:500;">✉️ Email: ${email}</div>
+            <div style="font-size:12px;color:#8a7480;margin-top:2px;">OTP sent to your inbox</div>
           </div>
-          ${!otpState.email.verified?`<button class="mini-btn" id="resendBtn_email" disabled>Resend in 30s</button>`:''}
+          <button class="mini-btn" id="resendBtn_email" disabled>Resend in 30s</button>
         </div>
-        ${!otpState.email.verified?`
-          <div style="display:flex;gap:8px;margin-top:12px;">
-            <input type="text" id="otpInput_email" maxlength="6" placeholder="6-digit OTP"
-              style="flex:1;padding:10px;border:1px solid var(--stone);border-radius:8px;letter-spacing:4px;font-size:18px;text-align:center;"
-              oninput="this.value=this.value.replace(/\\D/g,'')"
-              onkeydown="if(event.key==='Enter')verifyEmailOtp()">
-            <button class="btn" style="padding:10px 18px;font-size:13px;" onclick="verifyEmailOtp()">Verify</button>
-          </div>
-          <div style="font-size:11px;color:#b5473a;margin-top:6px;" id="otpErr_email"></div>
-          <div style="font-size:11px;color:#8a7480;margin-top:6px;" id="otpHint_email"></div>
-        `:''}
+        <div style="display:flex;gap:8px;margin-top:12px;">
+          <input type="text" id="otpInput_email" maxlength="6" placeholder="6-digit OTP"
+            style="flex:1;padding:10px;border:1px solid var(--stone);border-radius:8px;letter-spacing:4px;font-size:18px;text-align:center;"
+            oninput="this.value=this.value.replace(/\\D/g,'')"
+            onkeydown="if(event.key==='Enter')verifyEmailOtp()">
+          <button class="btn" style="padding:10px 18px;font-size:13px;" onclick="verifyEmailOtp()">Verify</button>
+        </div>
+        <div style="font-size:11px;color:#b5473a;margin-top:6px;" id="otpErr_email"></div>
+        <div style="font-size:11px;color:#8a7480;margin-top:6px;" id="otpHint_email"></div>
       </div>
+      `}
 
       <div style="display:flex;gap:10px;margin-top:10px;">
         <button class="btn btn-outline" style="flex:1;" onclick="renderCheckoutStep1()">Back</button>
@@ -675,7 +722,7 @@ function renderCheckoutStep1b(){
     </div>`;
 
   /* restart cooldown display if OTP already sent */
-  if(!otpState.email.verified && otpState.email.cooldown > 0) startEmailCooldown();
+  if(emailProvided && !otpState.email.verified && otpState.email.cooldown > 0) startEmailCooldown();
 }
 function renderCheckoutStep2(){
   const t = orderTotals();
@@ -685,9 +732,8 @@ function renderCheckoutStep2(){
       ${stepperHtml(3)}
       <h3 style="margin-bottom:16px;">Choose Payment Method</h3>
       <div class="pay-options">
-        <div class="pay-opt ${selectedPayment==='cod'?'selected':''}" onclick="selectPayment('cod')"><div class="radio"></div><div class="pico">💵</div><div class="ptxt"><div class="t1">Cash on Delivery</div><div class="t2">Pay when your order arrives</div></div></div>
         <div class="pay-opt ${selectedPayment==='upi'?'selected':''}" onclick="selectPayment('upi')"><div class="radio"></div><div class="pico">📱</div><div class="ptxt"><div class="t1">UPI</div><div class="t2">Google Pay, PhonePe, Paytm &amp; more</div></div></div>
-        <div class="pay-opt ${selectedPayment==='card'?'selected':''}" onclick="selectPayment('card')"><div class="radio"></div><div class="pico">💳</div><div class="ptxt"><div class="t1">Credit / Debit Card</div><div class="t2">Visa, Mastercard, RuPay</div></div></div>
+        <div class="pay-opt ${selectedPayment==='banking'?'selected':''}" onclick="selectPayment('banking')"><div class="radio"></div><div class="pico">🏦</div><div class="ptxt"><div class="t1">Net Banking</div><div class="t2">Direct bank transfer</div></div></div>
       </div>
       <div class="order-summary">
         <div class="order-line"><span>Subtotal</span><span>${money(t.subtotal)}</span></div>
@@ -704,32 +750,16 @@ function renderCheckoutStep2(){
 }
 function selectPayment(method){ selectedPayment = method; renderCheckoutStep2(); }
 function goToGateway(){
-  const t = orderTotals();
-  const shell = document.querySelector('.checkout-shell');
-  if(selectedPayment==='cod'){
-    shell.innerHTML = `${stepperHtml(4)}<div class="gateway-box"><div style="font-size:40px;margin-bottom:14px;">💵</div><h3>Confirm Cash on Delivery</h3><p style="font-size:13px;color:#8a7480;margin:10px 0 24px;">You'll pay ${money(t.total)} in cash when your order is delivered.</p><button class="btn full-btn" onclick="finalizeOrder('COD')">Place Order</button></div>`;
+  if(!settings.paymentUpiId && selectedPayment==='upi'){
+    alert('The store has not set up a UPI ID yet. Please choose Net Banking, or contact us.');
     return;
   }
-  if(selectedPayment==='upi'){
-    shell.innerHTML = `${stepperHtml(4)}<div class="gateway-box"><h3>Pay via UPI</h3><p style="font-size:13px;color:#8a7480;margin-top:8px;">Enter your UPI ID to receive a payment request for ${money(t.total)}</p>
-      <div class="upi-fake"><input type="text" placeholder="yourname@upi" id="upiId"><button class="btn full-btn" onclick="simulatePayment('UPI')">Pay ${money(t.total)}</button></div></div>`;
+  const bank = settings.paymentBank || {};
+  if(selectedPayment==='banking' && !bank.accountNumber){
+    alert('The store has not set up bank transfer details yet. Please choose UPI, or contact us.');
     return;
   }
-  if(selectedPayment==='card'){
-    shell.innerHTML = `${stepperHtml(4)}<div class="gateway-box"><h3>Card Details</h3>
-      <div class="card-fake"><input type="text" placeholder="Card Number" maxlength="19"><div class="card-row2"><input type="text" placeholder="MM / YY" maxlength="5"><input type="text" placeholder="CVV" maxlength="3"></div><input type="text" placeholder="Name on Card"><button class="btn full-btn" onclick="simulatePayment('Card')">Pay ${money(t.total)}</button></div></div>`;
-  }
-}
-function simulatePayment(method){
-  const shell = document.querySelector('.checkout-shell');
-  shell.innerHTML = `${stepperHtml(4)}<div class="gateway-box"><div class="spinner"></div><h3>Processing your payment…</h3><p style="font-size:13px;color:#8a7480;margin-top:8px;">Please don't close this window.</p><div class="progress-steps"><span class="on"></span><span></span><span></span></div></div>`;
-  let step = 0;
-  const dots = ()=>document.querySelectorAll('.progress-steps span');
-  const iv = setInterval(()=>{
-    step++;
-    const d = dots(); if(d && d[step]) d[step].classList.add('on');
-    if(step>=2){ clearInterval(iv); setTimeout(()=>finalizeOrder(method), 500); }
-  }, 700);
+  launchManualPayment(selectedPayment==='upi' ? 'UPI' : 'Net Banking');
 }
 async function finalizeOrder(paymentMethod){
   const t = orderTotals();
@@ -747,7 +777,7 @@ async function finalizeOrder(paymentMethod){
   // send order confirmation email
   sendOrderConfirmationEmail(order);
 
-  cart = []; appliedCoupon = null; shippingData = null; selectedPayment='cod';
+  cart = []; appliedCoupon = null; shippingData = null; selectedPayment='upi';
   otpState = { phone:{ verified:false }, email:{ code:null, verified:false, cooldown:0, sending:false } };
   saveLS('ach_cart', cart);
   updateCartCount();
@@ -1193,16 +1223,16 @@ window.goToGateway = function(){
   _origGoToGateway();
 };
 
-async function launchUpiFlow(){
+async function launchManualPayment(method){
+  // method is 'UPI' or 'Net Banking' — both are manual/offline collection (no payment gateway).
   const t = orderTotals();
-  // save order to Firestore with status Pending
   const orderId = 'ACH' + Date.now().toString().slice(-8);
   const order = {
     id: orderId,
     date: new Date().toISOString(),
     customer: shippingData,
     uid: window.currentUser ? window.currentUser.uid : null,
-    payment: 'UPI',
+    payment: method,
     paymentStatus: 'Pending',
     items: cartLines().map(l=>({name:l.product.name, size:l.size, qty:l.qty, price:l.product.price})),
     coupon: appliedCoupon ? appliedCoupon.code : null,
@@ -1212,84 +1242,84 @@ async function launchUpiFlow(){
   };
   try { await db.collection('orders').doc(orderId).set(order); } catch(e){ console.warn('order write failed', e); }
 
-  // close checkout modal
   closeModal('checkoutModalBg');
 
-  // build UPI link
-  const upiId = '9752424838@ybl';
-  const payeeName = 'ACH Boutique';
-  const amount = t.total.toFixed(2);
-  const note = encodeURIComponent('ACH Order ' + orderId);
-  const upiLink = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR&tn=${note}`;
-
-  showUpiModal({ upiLink, upiId, amount, orderId });
+  if(method==='UPI'){
+    const upiId = settings.paymentUpiId;
+    const payeeName = 'ACH Boutique';
+    const amount = t.total.toFixed(2);
+    const note = encodeURIComponent('ACH Order ' + orderId);
+    const upiLink = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR&tn=${note}`;
+    showManualPaymentModal({ method, orderId, amount, upiLink, upiId });
+  } else {
+    showManualPaymentModal({ method, orderId, amount: t.total.toFixed(2) });
+  }
 }
 
-function showUpiModal({ upiLink, upiId, amount, orderId }){
-
-
-  // remove any existing UPI modal
+function showManualPaymentModal({ method, orderId, amount, upiLink, upiId }){
   const existing = document.getElementById('upiModalBg');
   if(existing) existing.remove();
 
   const isMobile = window.innerWidth <= 768;
+  const bank = settings.paymentBank || {};
 
   const el = document.createElement('div');
   el.className = 'upi-modal-bg';
   el.id = 'upiModalBg';
-  el.innerHTML = `
-    <div class="upi-modal-box">
-      <h2>Pay via UPI</h2>
-      <p class="upi-sub">Complete your payment to confirm the order</p>
 
-      <div class="upi-amount-badge">₹${amount}</div>
+  let bodyHtml = '';
 
+  if(method==='UPI'){
+    bodyHtml = `
       ${isMobile ? `
-      <!-- MOBILE: tap buttons to open UPI apps -->
       <p style="font-size:12px;color:#8a7480;margin-bottom:12px;">Tap to open your UPI app</p>
       <div class="upi-apps-row">
-        <a class="upi-app-btn" href="${upiLink}" onclick="upiAppOpened('${orderId}')">
-          <span class="ico">G</span><span>GPay</span>
-        </a>
-        <a class="upi-app-btn" href="${upiLink}" onclick="upiAppOpened('${orderId}')">
-          <span class="ico">📲</span><span>PhonePe</span>
-        </a>
-        <a class="upi-app-btn" href="${upiLink}" onclick="upiAppOpened('${orderId}')">
-          <span class="ico">P</span><span>Paytm</span>
-        </a>
-        <a class="upi-app-btn" href="${upiLink}" onclick="upiAppOpened('${orderId}')">
-          <span class="ico">↗</span><span>Any App</span>
-        </a>
+        <a class="upi-app-btn" href="${upiLink}" onclick="upiAppOpened('${orderId}')"><span class="ico">G</span><span>GPay</span></a>
+        <a class="upi-app-btn" href="${upiLink}" onclick="upiAppOpened('${orderId}')"><span class="ico">📲</span><span>PhonePe</span></a>
+        <a class="upi-app-btn" href="${upiLink}" onclick="upiAppOpened('${orderId}')"><span class="ico">P</span><span>Paytm</span></a>
+        <a class="upi-app-btn" href="${upiLink}" onclick="upiAppOpened('${orderId}')"><span class="ico">↗</span><span>Any App</span></a>
       </div>
       ` : `
-      <!-- DESKTOP: QR code -->
       <div id="upiQrWrap" style="display:block;">
         <p>Scan with any UPI app — GPay, PhonePe, Paytm</p>
-        <div id="upiQr"></div>
+        <div id="upiQr">${settings.paymentQrImage ? `<img src="${settings.paymentQrImage}" style="width:180px;height:180px;object-fit:contain;">` : ''}</div>
       </div>
       `}
-
       <div class="upi-divider">or pay manually to</div>
       <div class="upi-id-display">
         <span>${upiId}</span>
         <span style="font-size:11px;color:#8a7480;">ACH Boutique</span>
+      </div>`;
+  } else {
+    bodyHtml = `
+      <div class="upi-id-display" style="flex-direction:column;align-items:flex-start;gap:6px;">
+        <div><b>Account Name:</b> ${bank.accountName||'—'}</div>
+        <div><b>Account Number:</b> ${bank.accountNumber||'—'}</div>
+        <div><b>IFSC Code:</b> ${bank.ifsc||'—'}</div>
+        <div><b>Bank:</b> ${bank.bankName||'—'}</div>
       </div>
-      <p style="font-size:11px;color:#a3939c;margin-bottom:18px;">Order ID: <b>${orderId}</b> · Amount: <b>₹${amount}</b></p>
+      <p style="font-size:12px;color:#8a7480;margin-top:10px;">Transfer using any bank app (NEFT/IMPS/UPI to account) and confirm below once done.</p>`;
+  }
 
+  el.innerHTML = `
+    <div class="upi-modal-box">
+      <h2>${method==='UPI' ? 'Pay via UPI' : 'Pay via Net Banking'}</h2>
+      <p class="upi-sub">Complete your payment to confirm the order</p>
+      <div class="upi-amount-badge">₹${amount}</div>
+      ${bodyHtml}
+      <p style="font-size:11px;color:#a3939c;margin:14px 0 18px;">Order ID: <b>${orderId}</b> · Amount: <b>₹${amount}</b></p>
       <div class="upi-success-note" id="upiSuccessNote">
         ✅ Payment initiated. Once you've sent the money, tap the button below.
       </div>
-
-      <button class="upi-paid-btn" id="upiConfirmBtn" onclick="upiPaymentConfirmed('${orderId}', '${amount}')">
+      <button class="upi-paid-btn" id="upiConfirmBtn" onclick="manualPaymentConfirmed('${orderId}', '${amount}', '${method}')">
         I've Paid — Confirm Order
       </button>
-      <button class="upi-cancel-btn" onclick="upiOrderCancelled('${orderId}')">Cancel Order</button>
+      <button class="upi-cancel-btn" onclick="manualPaymentCancelled('${orderId}')">Cancel Order</button>
     </div>`;
 
   document.body.appendChild(el);
 
-  // load QR on desktop
-  if(!isMobile){
+  if(method==='UPI' && !isMobile && !settings.paymentQrImage){
     loadUpiQr(upiLink);
   }
 }
@@ -1305,14 +1335,13 @@ function loadUpiQr(text){
 }
 
 function upiAppOpened(orderId){
-  // show success note + confirm button 2.5s after UPI app opens
   setTimeout(()=>{
     const note = document.getElementById('upiSuccessNote');
     if(note) note.style.display = 'block';
   }, 2500);
 }
 
-async function upiPaymentConfirmed(orderId, amount){
+async function manualPaymentConfirmed(orderId, amount, method){
   const btn = document.getElementById('upiConfirmBtn');
   btn.disabled = true; btn.textContent = 'Saving…';
   try {
@@ -1322,38 +1351,38 @@ async function upiPaymentConfirmed(orderId, amount){
     });
   } catch(e){ console.warn('status update failed', e); }
 
-  // send confirmation email
-  if(shippingData){
+  if(shippingData && shippingData.email){
     sendOrderConfirmationEmail({
-      id: orderId, customer: shippingData, payment: 'UPI',
+      id: orderId, customer: shippingData, payment: method,
       items: cartLines().map(l=>({name:l.product.name, size:l.size, qty:l.qty, price:l.product.price})),
       total: amount
     });
   }
 
-  // clear cart
-  cart = []; appliedCoupon = null; shippingData = null; selectedPayment = 'cod';
-  otpState = { phone:{ verified:false }, email:{ code:null, verified:false, cooldown:0, sending:false } };
+  cart = []; appliedCoupon = null; shippingData = null; selectedPayment = 'upi';
+  otpState = { phone:{verified:false}, email:{ code:null, verified:false, cooldown:0, sending:false, forEmail:null } };
   saveLS('ach_cart', cart);
   updateCartCount();
 
-  const upiEl = document.getElementById('upiModalBg');
-  if(upiEl) upiEl.remove();
+  const modalEl = document.getElementById('upiModalBg');
+  if(modalEl) modalEl.remove();
 
   document.getElementById('successOrderId').textContent = orderId;
   document.getElementById('successPayNote').textContent =
-    `Payment of ₹${amount} via UPI is being verified. We'll confirm your order within a few minutes.`;
+    `Payment of ₹${amount} via ${method} is being verified. We'll confirm your order shortly.`;
+  const viewLink = document.getElementById('successViewOrderLink');
+  if(viewLink) viewLink.href = 'confirmation.html?order=' + orderId;
   document.getElementById('successModalBg').classList.add('show');
   launchConfetti();
 }
 
-async function upiOrderCancelled(orderId){
+async function manualPaymentCancelled(orderId){
   if(!confirm('Cancel this order?')) return;
   try {
     await db.collection('orders').doc(orderId).update({ status:'Cancelled', paymentStatus:'Cancelled' });
   } catch(e){}
-  const upiEl = document.getElementById('upiModalBg');
-  if(upiEl) upiEl.remove();
+  const modalEl = document.getElementById('upiModalBg');
+  if(modalEl) modalEl.remove();
   showToast('Order cancelled.');
 }
 
