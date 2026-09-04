@@ -182,7 +182,9 @@ const DEFAULT_SETTINGS = {
     {label:'15% OFF', type:'percent', value:15, weight:12, code:'SPIN15'},
     {label:'5% OFF', type:'percent', value:5, weight:25, code:'SPIN5'},
     {label:'Try Again', type:'none', value:0, weight:10, code:''}
-  ]
+  ],
+  paymentUpiId:'', paymentQrImage:'',
+  paymentBank:{ accountName:'', accountNumber:'', ifsc:'', bankName:'' }
 };
 
 let products = [];
@@ -780,12 +782,58 @@ function renderSettingsAdmin(){
     </div>
     <div class="admin-card">
       <h3 style="margin-bottom:6px;font-size:16px;">Payment Methods</h3>
-      <p style="font-size:13px;color:#8a7480;">Cash on Delivery, UPI, and Card are enabled by default (simulated gateway). To accept live payments, connect Razorpay or Stripe — I can help wire that up when you're ready.</p>
+      <p style="font-size:12px;color:#8a7480;margin-bottom:16px;">No payment gateway is connected — customers pay you directly via UPI or bank transfer, then confirm on-screen. Orders come in as "Pending Verification" until you mark them paid.</p>
+
+      <div style="margin-bottom:18px;">
+        <div style="font-size:14px;font-weight:500;margin-bottom:6px;">UPI ID</div>
+        <input type="text" id="payUpiId" placeholder="yourname@upi" value="${settings.paymentUpiId||''}" style="width:100%;max-width:320px;padding:9px 12px;border:1px solid var(--stone);border-radius:8px;" onchange="updateSetting('paymentUpiId', this.value.trim())">
+        <div style="font-size:11px;color:#8a7480;margin-top:4px;">Shown to customers and used to build the payment QR / app links.</div>
+      </div>
+
+      <div style="margin-bottom:18px;">
+        <div style="font-size:14px;font-weight:500;margin-bottom:6px;">QR Code Image (optional)</div>
+        <div style="font-size:11px;color:#8a7480;margin-bottom:8px;">If left blank, a QR is auto-generated from your UPI ID on desktop. Upload your own (e.g. your bank's official QR) to use that instead.</div>
+        ${settings.paymentQrImage ? `<img src="${settings.paymentQrImage}" style="width:100px;height:100px;object-fit:contain;border:1px solid var(--stone);border-radius:8px;margin-bottom:8px;display:block;">` : ''}
+        <input type="file" id="qrImgInput" accept="image/*" style="display:none" onchange="handleQrUpload(event)">
+        <div style="display:flex;gap:8px;">
+          <button class="mini-btn" onclick="document.getElementById('qrImgInput').click()">${settings.paymentQrImage?'Replace':'Upload'} QR Image</button>
+          ${settings.paymentQrImage ? `<button class="mini-btn" onclick="updateSetting('paymentQrImage','')">Remove</button>` : ''}
+        </div>
+        <div id="qrUploadStatus" style="font-size:11px;color:#8a7480;margin-top:6px;"></div>
+      </div>
+
+      <div>
+        <div style="font-size:14px;font-weight:500;margin-bottom:8px;">Net Banking — Account Details</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:480px;">
+          <input type="text" placeholder="Account Holder Name" value="${(settings.paymentBank&&settings.paymentBank.accountName)||''}" style="padding:9px 12px;border:1px solid var(--stone);border-radius:8px;" onchange="updateBankField('accountName', this.value.trim())">
+          <input type="text" placeholder="Account Number" value="${(settings.paymentBank&&settings.paymentBank.accountNumber)||''}" style="padding:9px 12px;border:1px solid var(--stone);border-radius:8px;" onchange="updateBankField('accountNumber', this.value.trim())">
+          <input type="text" placeholder="IFSC Code" value="${(settings.paymentBank&&settings.paymentBank.ifsc)||''}" style="padding:9px 12px;border:1px solid var(--stone);border-radius:8px;" onchange="updateBankField('ifsc', this.value.trim().toUpperCase())">
+          <input type="text" placeholder="Bank Name" value="${(settings.paymentBank&&settings.paymentBank.bankName)||''}" style="padding:9px 12px;border:1px solid var(--stone);border-radius:8px;" onchange="updateBankField('bankName', this.value.trim())">
+        </div>
+        <div style="font-size:11px;color:#8a7480;margin-top:6px;">Shown to customers who choose Net Banking at checkout.</div>
+      </div>
     </div>
   `;
 }
 async function toggleGST(){ await db.collection('settings').doc('main').set({showGST: !settings.showGST}, {merge:true}); }
 async function updateSetting(key, val){ await db.collection('settings').doc('main').set({[key]: val}, {merge:true}); }
+async function updateBankField(field, val){
+  const bank = {...(settings.paymentBank||{}), [field]: val};
+  await db.collection('settings').doc('main').set({paymentBank: bank}, {merge:true});
+}
+async function handleQrUpload(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const statusEl = document.getElementById('qrUploadStatus');
+  statusEl.textContent = 'Processing…';
+  try{
+    const base64 = await resizeAndEncode(file, 400);
+    await db.collection('settings').doc('main').set({paymentQrImage: base64}, {merge:true});
+    statusEl.textContent = '';
+  }catch(err){
+    statusEl.innerHTML = `<span style="color:#c0405f;">Failed: ${err.message}</span>`;
+  }
+}
 async function updateAdminPassword(){
   const val = document.getElementById('newAdminPass').value.trim();
   if(!val){ alert('Enter a new password.'); return; }
