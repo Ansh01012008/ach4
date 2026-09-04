@@ -1,4 +1,4 @@
-/* =========================================================
+/* ========================================================
    SHARED CHROME (header / footer / cart drawer / all modals)
    Injected on every page into fixed placeholder divs:
    <div id="chrome-header"></div> ... <div id="chrome-footer"></div> ... <div id="chrome-overlays"></div>
