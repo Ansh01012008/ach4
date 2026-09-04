@@ -1188,6 +1188,11 @@ function updateAccountIcon(){
     inner.textContent = '👤';
   }
 }
+/* Header account icon now navigates to a real page instead of opening the
+   old modal-overlay — signed-in users go to their account, others to login. */
+function goToAccount(){
+  window.location.href = window.currentUser ? 'account.html' : 'login.html';
+}
 
 async function signOutUser(){
   await auth.signOut();
@@ -1385,4 +1390,3 @@ async function manualPaymentCancelled(orderId){
   if(modalEl) modalEl.remove();
   showToast('Order cancelled.');
 }
-
