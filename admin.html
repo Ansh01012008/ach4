@@ -162,7 +162,7 @@ const DEFAULT_COUPONS = [
   {id:'FLAT500', code:'FLAT500', type:'flat', value:500, active:true, desc:'Flat ₹500 off on orders above ₹3000', minOrder:3000},
 ];
 const DEFAULT_SETTINGS = {
-  showGST:true, gstRate:5, adminPassword:'admin123', currency:'₹',
+  showGST:true, gstRate:5, currency:'₹',
   shippingThreshold:2500, shippingFee:99,
   heroEyebrow:'— Festive Edit, 2026', heroTitle:'Quiet luxury, cut for real life.',
   heroSubtitle:'ACH Boutique brings together small-batch textiles and considered silhouettes — pieces made to be worn for years, not seasons.',
@@ -185,7 +185,10 @@ const DEFAULT_SETTINGS = {
   ],
   paymentUpiId:'', paymentQrImage:'',
   paymentBank:{ accountName:'', accountNumber:'', ifsc:'', bankName:'' },
-  heroImage:'', categoryBanners:{}
+  heroImage:'', categoryBanners:{},
+  storeAddress:'B61 Palace Orchard, Phase 3\nKolar Road, Bhopal 462042, MP',
+  storePhone:'+91 93007 60840', storeEmail:'hello@achboutique.in',
+  storeTagline:'Considered clothing, made in small batches.'
 };
 
 let products = [];
@@ -220,8 +223,17 @@ async function seedIfEmpty(){
   }
   const sDoc = await db.collection('settings').doc('main').get();
   if(!sDoc.exists){ await db.collection('settings').doc('main').set(DEFAULT_SETTINGS); }
+  // adminPassword lives in its own collection, NOT in settings — settings is
+  // publicly readable by every storefront page (that's how hero text/GST rate
+  // reach customers), so the password must never live there.
+  const aDoc = await db.collection('adminConfig').doc('main').get();
+  if(!aDoc.exists){ await db.collection('adminConfig').doc('main').set({password:'admin123'}); }
 }
+let adminConfig = {password:'admin123'};
 function listenAll(){
+  db.collection('adminConfig').doc('main').onSnapshot(doc=>{
+    if(doc.exists) adminConfig = doc.data();
+  }, ()=>{});
   db.collection('settings').doc('main').onSnapshot(doc=>{
     settings = doc.exists ? {...DEFAULT_SETTINGS, ...doc.data()} : {...DEFAULT_SETTINGS};
     if(document.querySelector('.admin-nav-item.active')?.dataset.tab){
@@ -264,7 +276,7 @@ function listenAll(){
 /* ===== LOGIN ===== */
 function adminLogin(){
   const val = document.getElementById('adminPass').value;
-  if(val === settings.adminPassword){
+  if(val === adminConfig.password){
     document.getElementById('loginWrap').classList.add('hidden');
     document.getElementById('adminShell').classList.remove('hidden');
     dbReady = true;
@@ -604,6 +616,15 @@ function renderContentAdmin(){
       </div>
     </div>
     <div class="admin-card">
+      <h3 style="margin-bottom:14px;font-size:16px;">Store Info (footer &amp; contact page)</h3>
+      <div class="form-grid">
+        <div class="field"><label>Support Email</label><input id="cfStoreEmail" value="${s.storeEmail||''}"></div>
+        <div class="field"><label>Support Phone</label><input id="cfStorePhone" value="${s.storePhone||''}"></div>
+        <div class="field full"><label>Address</label><textarea id="cfStoreAddress" rows="2">${s.storeAddress||''}</textarea></div>
+        <div class="field full"><label>Footer Tagline</label><input id="cfStoreTagline" value="${s.storeTagline||''}"></div>
+      </div>
+    </div>
+    <div class="admin-card">
       <h3 style="margin-bottom:14px;font-size:16px;">Announcement Bar</h3>
       <div class="field full"><input id="cfAnnounce" value="${s.announcementText||''}"></div>
     </div>
@@ -712,6 +733,10 @@ async function saveContent(){
     saleTitle: document.getElementById('cfSaleTitle').value,
     saleSubtitle: document.getElementById('cfSaleSubtitle').value,
     saleEndDate: new Date(document.getElementById('cfSaleEnd').value).toISOString(),
+    storeEmail: document.getElementById('cfStoreEmail').value.trim(),
+    storePhone: document.getElementById('cfStorePhone').value.trim(),
+    storeAddress: document.getElementById('cfStoreAddress').value,
+    storeTagline: document.getElementById('cfStoreTagline').value,
     aboutItems
   };
   await db.collection('settings').doc('main').set(data, {merge:true});
@@ -873,6 +898,11 @@ function renderSettingsAdmin(){
       <div class="toggle-row"><div style="font-size:14px;">Shipping fee below threshold (₹)</div><input type="number" value="${settings.shippingFee}" style="width:100px;padding:8px;border:1px solid var(--stone);border-radius:6px;" onchange="updateSetting('shippingFee', Number(this.value))"></div>
     </div>
     <div class="admin-card">
+      <h3 style="margin-bottom:6px;font-size:16px;">Data Export &amp; Backup</h3>
+      <p style="font-size:12px;color:#8a7480;margin-bottom:14px;">Download everything — products, orders, coupons, customers, reviews, and messages — as one JSON file. Useful before making big changes, or just to keep an offline copy.</p>
+      <button class="btn btn-outline" id="exportAllBtn" onclick="exportAllData()">Export All Data</button>
+    </div>
+    <div class="admin-card">
       <h3 style="margin-bottom:6px;font-size:16px;">Admin Password</h3>
       <div style="display:flex;gap:10px;"><input type="password" id="newAdminPass" placeholder="New password" style="flex:1;padding:10px 12px;border:1px solid var(--stone);border-radius:8px;"><button class="btn" onclick="updateAdminPassword()">Update</button></div>
     </div>
@@ -937,9 +967,32 @@ async function handleQrUpload(e){
 async function updateAdminPassword(){
   const val = document.getElementById('newAdminPass').value.trim();
   if(!val){ alert('Enter a new password.'); return; }
-  await db.collection('settings').doc('main').set({adminPassword: val}, {merge:true});
+  await db.collection('adminConfig').doc('main').set({password: val}, {merge:true});
   alert('Admin password updated.');
   document.getElementById('newAdminPass').value='';
+}
+async function exportAllData(){
+  const btn = document.getElementById('exportAllBtn');
+  btn.disabled = true; btn.textContent = 'Exporting…';
+  try{
+    const collections = ['products','orders','coupons','reviews','customers','contactMessages','newsletter','stockAlerts'];
+    const backup = { exportedAt: new Date().toISOString(), settings };
+    for(const col of collections){
+      const snap = await db.collection(col).get();
+      backup[col] = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    }
+    const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ach-boutique-backup-${new Date().toISOString().slice(0,10)}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  }catch(e){
+    alert('Export failed: ' + e.message);
+  }finally{
+    btn.disabled = false; btn.textContent = 'Export All Data';
+  }
 }
 
 /* ===== BOOTSTRAP ===== */
