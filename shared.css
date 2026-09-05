@@ -360,3 +360,11 @@ footer{background:var(--charcoal);color:#e8dae1;padding:56px 28px 30px;}
 .mini-btn{padding:9px 14px;border:1px solid var(--stone);border-radius:8px;font-size:12px;background:var(--white);}
 .full-btn{width:100%;text-align:center;}
 .empty-page{text-align:center;padding:100px 20px;color:#8a7480;}
+
+/* ---- NAV DROPDOWN (Shop by category) ---- */
+.nav-dropdown{position:relative;}
+.nav-dropdown-menu{display:none;position:absolute;top:100%;left:-14px;background:var(--white);border:1px solid var(--stone);border-radius:12px;box-shadow:0 12px 30px rgba(58,46,56,0.1);padding:8px 0;min-width:170px;z-index:60;}
+.nav-dropdown-menu a{display:block;padding:9px 18px;font-size:13px;color:var(--charcoal);white-space:nowrap;}
+.nav-dropdown-menu a:hover{background:var(--blush);color:var(--charcoal);}
+.nav-dropdown:hover .nav-dropdown-menu{display:block;}
+.nav-dropdown > a::after{content:' ▾';font-size:10px;color:#8a7480;}
