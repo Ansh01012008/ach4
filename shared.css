@@ -54,6 +54,8 @@ nav a:hover::after{width:100%;}
 .hero-visual{aspect-ratio:4/5;border-radius:24px;background:linear-gradient(155deg,var(--blush) 0%,var(--rose) 45%,var(--lavender-deep) 100%);position:relative;overflow:hidden;box-shadow:0 30px 60px -20px rgba(183,158,224,0.5);animation:fadeUp 1s ease .15s both;}
 .hero-visual::before{content:'ACH';position:absolute;font-family:'Fraunces',serif;font-weight:600;font-size:200px;color:rgba(255,255,255,0.22);top:50%;left:50%;transform:translate(-50%,-52%);white-space:nowrap;}
 .hero-visual::after{content:'';position:absolute;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,0.25);top:-40px;right:-40px;filter:blur(10px);}
+.hero-visual.has-image::before{display:none;}
+.hero-visual.has-image::after{display:none;}
 .hero-blob{position:absolute;border-radius:50%;filter:blur(50px);opacity:.5;z-index:-1;}
 .hero-blob.b1{width:280px;height:280px;background:var(--blush-deep);top:-60px;left:-100px;animation:floatY 10s ease-in-out infinite;}
 .hero-blob.b2{width:220px;height:220px;background:var(--lavender);bottom:-40px;right:10%;animation:floatY 12s ease-in-out infinite reverse;}
