@@ -8,8 +8,11 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="shared.css">
 <style>
+/* The real auth form is injected by chrome.js as #authModalBg (fixed-position
+   overlay by default). On this page we want it to sit inline in the page
+   flow instead of floating on top of nothing, so we override its position. */
 #authModalBg{position:static !important;background:none !important;opacity:1 !important;pointer-events:auto !important;padding:0 !important;display:block !important;}
-#authModalBg .modal{max-width:440px;margin:40px auto;box-shadow:0 10px 40px rgba(58,46,56,0.08);border-radius:20px;border:1px solid var(--stone);}
+#authModalBg .auth-box{max-width:440px;margin:20px auto 60px;box-shadow:0 10px 40px rgba(58,46,56,0.08);border-radius:20px;border:1px solid var(--stone);position:relative;}
 #authModalBg .modal-close{display:none;}
 </style>
 </head>
@@ -17,9 +20,8 @@
 
 <div id="chrome-header"></div>
 
-<div class="page-wrap" style="max-width:600px;">
+<div class="page-wrap" style="max-width:600px;padding-bottom:0;">
   <div class="breadcrumb"><a href="index.html">Shop</a> / Sign In</div>
-  <div class="modal-bg" id="authModalBg"><div class="modal" id="authModal"></div></div>
 </div>
 
 <div id="chrome-footer"></div>
@@ -35,12 +37,10 @@
 <script src="chrome.js"></script>
 <script>
 injectSharedChrome();
-(function(){
-  const overlayAuth = document.querySelectorAll('#chrome-overlays #authModalBg');
-  if(overlayAuth.length) overlayAuth[0].id = 'authModalBgMini';
-})();
+// NOTE: no rename here — this page wants the REAL #authModalBg (injected by
+// chrome.js, containing the actual phone/OTP form) to stay addressable by
+// its real id, so openAuthModal() finds and fills it correctly.
 init();
-// Fires once Firebase resolves auth state (avoids acting on a stale window.currentUser)
 let _loginHandled = false;
 function onAuthReady(user){
   if(_loginHandled) return;
