@@ -28,9 +28,11 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
 
-    // newsletter/stock alerts/contact form — anyone can write (submit), nobody can read from browser
-    match /newsletter/{id}   { allow create: if true; allow read: if false; }
-    match /stockAlerts/{id}  { allow create: if true; allow read: if false; }
-    match /contactMessages/{id} { allow create: if true; allow read: if false; }
+    // newsletter/stock alerts/contact form — anyone can submit; admin needs to
+    // read these back (admin.html has no Firebase Auth to check against, same
+    // trade-off as products/orders/settings above).
+    match /newsletter/{id}   { allow create: if true; allow read: if true; }
+    match /stockAlerts/{id}  { allow create: if true; allow read: if true; }
+    match /contactMessages/{id} { allow create: if true; allow read: if true; }
   }
 }
