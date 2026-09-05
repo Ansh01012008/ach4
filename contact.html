@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contact Us — ACH Boutique</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+.contact-wrap{max-width:960px;margin:0 auto;padding:40px 24px 90px;display:grid;grid-template-columns:1fr 1.2fr;gap:50px;}
+@media (max-width:760px){ .contact-wrap{grid-template-columns:1fr;} }
+.contact-info h1{font-size:30px;margin-bottom:10px;}
+.contact-info p{font-size:14px;color:#5c4a55;margin-bottom:26px;line-height:1.6;}
+.contact-item{display:flex;gap:12px;margin-bottom:20px;align-items:flex-start;}
+.contact-item .ico{font-size:18px;}
+.contact-item .t1{font-size:13px;font-weight:500;margin-bottom:2px;}
+.contact-item .t2{font-size:13px;color:#8a7480;}
+.contact-form{border:1px solid var(--stone);border-radius:16px;padding:30px;background:#fff;}
+.contact-form input, .contact-form textarea{width:100%;padding:11px 12px;border:1px solid var(--stone);border-radius:8px;background:var(--ivory);font-family:inherit;font-size:14px;margin-bottom:14px;}
+.contact-form textarea{min-height:110px;resize:vertical;}
+.contact-success{background:#eef6ef;border:1px solid #c9dfcb;border-radius:10px;padding:14px 16px;font-size:13px;color:#3f6b41;margin-top:14px;display:none;}
+</style>
+</head>
+<body>
+
+<div id="chrome-header"></div>
+
+<div class="page-wrap" style="padding-bottom:0;">
+  <div class="breadcrumb"><a href="index.html">Shop</a> / Contact</div>
+</div>
+
+<div class="contact-wrap">
+  <div class="contact-info">
+    <h1>Get in Touch</h1>
+    <p>Questions about an order, sizing, or a piece you're eyeing? We usually reply within a few hours.</p>
+    <div class="contact-item"><span class="ico">✉️</span><div><div class="t1">Email</div><div class="t2">hello@achboutique.in</div></div></div>
+    <div class="contact-item"><span class="ico">📞</span><div><div class="t1">Phone</div><div class="t2">+91 93007 60840</div></div></div>
+    <div class="contact-item"><span class="ico">📍</span><div><div class="t1">Studio</div><div class="t2">B61 Palace Orchard, Phase 3<br>Kolar Road, Bhopal 462042, MP</div></div></div>
+    <div class="contact-item"><span class="ico">📦</span><div><div class="t1">Track an existing order?</div><div class="t2"><a href="track.html" style="color:var(--rose);text-decoration:underline;">Use Track Order</a> instead — it's faster.</div></div></div>
+  </div>
+
+  <div class="contact-form">
+    <h3 style="margin-bottom:16px;font-size:17px;">Send us a message</h3>
+    <input type="text" id="ctName" placeholder="Your name">
+    <input type="tel" id="ctPhone" placeholder="Phone number" maxlength="10" oninput="this.value=this.value.replace(/\D/g,'')">
+    <input type="email" id="ctEmail" placeholder="Email (optional)">
+    <textarea id="ctMessage" placeholder="How can we help?"></textarea>
+    <button class="btn full-btn" onclick="submitContactForm()">Send Message</button>
+    <div class="auth-err" id="ctErr"></div>
+    <div class="contact-success" id="ctSuccess">✓ Message sent — we'll get back to you shortly.</div>
+  </div>
+</div>
+
+<div id="chrome-footer"></div>
+<div id="chrome-overlays"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>emailjs.init('I4iWZBJq_43MymLwS');</script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="shared.js"></script>
+<script src="chrome.js"></script>
+<script>
+injectSharedChrome();
+init();
+
+async function submitContactForm(){
+  const name = document.getElementById('ctName').value.trim();
+  const phone = document.getElementById('ctPhone').value.trim();
+  const email = document.getElementById('ctEmail').value.trim();
+  const message = document.getElementById('ctMessage').value.trim();
+  const err = document.getElementById('ctErr');
+  err.textContent = '';
+  if(!name){ err.textContent = 'Please enter your name.'; return; }
+  if(phone.length !== 10){ err.textContent = 'Please enter a valid 10-digit phone number.'; return; }
+  if(!message){ err.textContent = 'Please enter a message.'; return; }
+
+  const btn = document.querySelector('.contact-form .btn');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  try{
+    await db.collection('contactMessages').add({
+      name, phone, email: email || null, message,
+      date: new Date().toISOString(),
+      uid: window.currentUser ? window.currentUser.uid : null
+    });
+    document.getElementById('ctSuccess').style.display = 'block';
+    document.getElementById('ctName').value = '';
+    document.getElementById('ctPhone').value = '';
+    document.getElementById('ctEmail').value = '';
+    document.getElementById('ctMessage').value = '';
+  }catch(e){
+    err.textContent = "Couldn't send your message. Please try again, or email us directly.";
+    console.error(e);
+  }finally{
+    btn.disabled = false; btn.textContent = 'Send Message';
+  }
+}
+</script>
+
+</body>
+</html>

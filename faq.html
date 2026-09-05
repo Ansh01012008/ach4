@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FAQs — ACH Boutique</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+.faq-wrap{max-width:720px;margin:0 auto;padding:40px 24px 90px;}
+.faq-item{border-bottom:1px solid var(--stone);padding:18px 0;}
+.faq-item summary{cursor:pointer;font-size:15px;font-weight:500;list-style:none;display:flex;justify-content:space-between;align-items:center;}
+.faq-item summary::-webkit-details-marker{display:none;}
+.faq-item summary::after{content:'+';font-size:20px;color:#8a7480;transition:.2s;}
+.faq-item[open] summary::after{content:'−';}
+.faq-item p{font-size:13px;color:#5c4a55;margin-top:12px;line-height:1.7;}
+.faq-cat{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--rose);margin:34px 0 6px;}
+.faq-cat:first-of-type{margin-top:10px;}
+</style>
+</head>
+<body>
+
+<div id="chrome-header"></div>
+
+<div class="page-wrap" style="padding-bottom:0;">
+  <div class="breadcrumb"><a href="index.html">Shop</a> / FAQs</div>
+</div>
+
+<div class="faq-wrap">
+  <h1 class="page-title" style="text-align:center;margin-bottom:10px;">Frequently Asked Questions</h1>
+  <p style="text-align:center;font-size:13px;color:#8a7480;margin-bottom:20px;">Can't find your answer? <a href="contact.html" style="color:var(--rose);text-decoration:underline;">Contact us</a> directly.</p>
+
+  <div class="faq-cat">Shipping</div>
+  <details class="faq-item"><summary>How long does delivery take?</summary><p>Most orders ship within 2–3 business days and arrive within 5–7 days depending on your location. You'll get updates by SMS (and email, if provided) as your order moves.</p></details>
+  <details class="faq-item"><summary>Is shipping free?</summary><p>Yes, on orders above ₹2,500. Below that, a flat shipping fee applies at checkout — you'll see the exact amount before you pay.</p></details>
+  <details class="faq-item"><summary>Can I track my order?</summary><p>Yes — use <a href="track.html" style="color:var(--rose);">Track Order</a> with your Order ID and the phone number used at checkout.</p></details>
+
+  <div class="faq-cat">Sizing</div>
+  <details class="faq-item"><summary>How do I pick the right size?</summary><p>Each product page has a Size Guide link with detailed measurements. Since pieces are handmade in small batches, we recommend checking the guide even if you know your usual size elsewhere.</p></details>
+  <details class="faq-item"><summary>What if it doesn't fit?</summary><p>Reach out within 3 days of delivery via <a href="contact.html" style="color:var(--rose);">Contact Us</a> with your Order ID, and we'll help sort out an exchange where possible.</p></details>
+
+  <div class="faq-cat">Payments</div>
+  <details class="faq-item"><summary>What payment methods do you accept?</summary><p>UPI (GPay, PhonePe, Paytm, or any UPI app) and direct Net Banking transfer. We don't use a payment gateway, so you confirm payment on-screen after paying, and we verify it manually before shipping.</p></details>
+  <details class="faq-item"><summary>Is it safe to pay this way?</summary><p>You're paying directly to our verified UPI ID or bank account — the same as paying any local shop. We never ask for OTPs, PINs, or card details, and never will.</p></details>
+
+  <div class="faq-cat">Account &amp; Orders</div>
+  <details class="faq-item"><summary>Do I need an account to order?</summary><p>No — you can check out as a guest. Creating an account just lets you track order history and save your cart across devices.</p></details>
+  <details class="faq-item"><summary>I forgot my password.</summary><p>Password recovery isn't available yet — for now, please <a href="contact.html" style="color:var(--rose);">contact us</a> with your registered phone number and we'll help you regain access.</p></details>
+
+  <div style="text-align:center;margin-top:40px;">
+    <a href="index.html" class="btn">Continue Shopping</a>
+  </div>
+</div>
+
+<div id="chrome-footer"></div>
+<div id="chrome-overlays"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>emailjs.init('I4iWZBJq_43MymLwS');</script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="shared.js"></script>
+<script src="chrome.js"></script>
+<script>
+injectSharedChrome();
+init();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Our Story — ACH Boutique</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+.story-hero{max-width:720px;margin:40px auto 10px;text-align:center;padding:0 24px;}
+.story-hero h1{font-size:36px;margin-bottom:14px;}
+.story-hero p{font-size:15px;color:#5c4a55;line-height:1.7;}
+</style>
+</head>
+<body>
+
+<div id="chrome-header"></div>
+
+<div class="page-wrap" style="padding-bottom:0;">
+  <div class="breadcrumb"><a href="index.html">Shop</a> / Our Story</div>
+</div>
+
+<div class="story-hero">
+  <h1>Considered clothing, made in small batches.</h1>
+  <p>ACH Boutique started with a simple frustration: most clothing is designed to be replaced, not kept. We work with small weaving clusters and regional makers to produce limited runs of pieces that are meant to last — in the fabric, the stitching, and the design.</p>
+</div>
+
+<section class="about-strip reveal" id="aboutStripPage" style="margin-top:20px;">
+  <div class="section" id="aboutGrid"></div>
+</section>
+
+<div class="page-wrap" style="max-width:720px;text-align:center;">
+  <p style="font-size:14px;color:#5c4a55;line-height:1.8;">Every piece carries small, natural variation — a sign it was made by hand, not a machine. We'd rather ship you something real than something perfect. If you ever have questions about a piece, sizing, or an order, our <a href="contact.html" style="color:var(--rose);text-decoration:underline;">Contact page</a> is the fastest way to reach us.</p>
+  <a href="index.html" class="btn" style="display:inline-block;margin-top:24px;">Shop the Collection</a>
+</div>
+
+<div id="chrome-footer"></div>
+<div id="chrome-overlays"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>emailjs.init('I4iWZBJq_43MymLwS');</script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="shared.js"></script>
+<script src="chrome.js"></script>
+<script>
+injectSharedChrome();
+init();
+</script>
+
+</body>
+</html>

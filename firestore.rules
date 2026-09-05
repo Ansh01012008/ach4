@@ -1,0 +1,36 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Public catalog data — readable by anyone. Writable by anyone too, since
+    // the admin panel is gated by an app-level password, not Firebase Auth,
+    // so Firestore rules can't tell "admin" apart from "customer" here.
+    match /products/{id}   { allow read: if true; allow write: if true; }
+    match /coupons/{id}    { allow read: if true; allow write: if true; }
+    match /settings/{id}   { allow read: if true; allow write: if true; }
+    match /reviews/{id}    { allow read: if true; allow write: if true; }
+
+    // orders — anyone can create an order (checkout is guest-friendly),
+    // only the owner can read their own, and updates are needed for the
+    // manual "I've Paid" confirmation flow and admin status changes.
+    match /orders/{id} {
+      allow create: if true;
+      allow read:   if request.auth != null && resource.data.uid == request.auth.uid;
+      allow update: if true;
+    }
+
+    // customers — only the owner can read/write their own doc
+    match /customers/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // per-user cart/wishlist sync — only the owner can read/write their own
+    match /userCarts/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // newsletter/stock alerts/contact form — anyone can write (submit), nobody can read from browser
+    match /newsletter/{id}   { allow create: if true; allow read: if false; }
+    match /stockAlerts/{id}  { allow create: if true; allow read: if false; }
+    match /contactMessages/{id} { allow create: if true; allow read: if false; }
+  }
+}
