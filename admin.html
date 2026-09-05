@@ -114,7 +114,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;}
     <div class="admin-nav-item" data-tab="customers" onclick="setAdminTab('customers')"><span>Customers</span></div>
     <div class="admin-nav-item" data-tab="analytics" onclick="setAdminTab('analytics')"><span>Analytics</span></div>
     <div class="admin-nav-item" data-tab="reviews" onclick="setAdminTab('reviews')"><span>Reviews</span></div>
-    <div class="admin-nav-item" data-tab="leads" onclick="setAdminTab('leads')"><span>Newsletter &amp; Alerts</span></div>
+    <div class="admin-nav-item" data-tab="leads" onclick="setAdminTab('leads')"><span>Messages &amp; Leads</span></div>
     <div class="admin-nav-item" data-tab="settings" onclick="setAdminTab('settings')"><span>Settings</span></div>
     <div class="admin-nav-item" onclick="window.open('./index.html','_blank')" style="margin-top:20px;"><span>↗ View Storefront</span></div>
     <div class="admin-nav-item" onclick="logoutAdmin()" style="color:var(--rose);"><span>← Sign Out</span></div>
@@ -193,6 +193,7 @@ let orders = [];
 let reviews = [];
 let newsletterLeads = [];
 let stockAlerts = [];
+let contactMessages = [];
 let settings = {...DEFAULT_SETTINGS};
 let editingProductId = null;
 let editingImages = [];
@@ -251,6 +252,10 @@ function listenAll(){
   }, ()=>{});
   db.collection('stockAlerts').onSnapshot(snap=>{
     stockAlerts = snap.docs.map(d=>d.data());
+    if(document.querySelector('.admin-nav-item.active')?.dataset.tab==='leads') setAdminTab('leads');
+  }, ()=>{});
+  db.collection('contactMessages').orderBy('date','desc').onSnapshot(snap=>{
+    contactMessages = snap.docs.map(d=>({id:d.id, ...d.data()}));
     if(document.querySelector('.admin-nav-item.active')?.dataset.tab==='leads') setAdminTab('leads');
   }, ()=>{});
 }
@@ -628,14 +633,14 @@ async function saveContent(){
 
 /* ===== ORDERS ===== */
 function renderOrdersAdmin(){
-  const pendingUpi = orders.filter(o=>o.payment==='UPI' && o.paymentStatus==='Pending Verification');
+  const pendingPayments = orders.filter(o=>(o.payment==='UPI'||o.payment==='Net Banking') && o.paymentStatus==='Pending Verification');
   return `
     <div class="admin-topbar"><h2>Orders</h2>${orders.length?`<button class="btn btn-outline" onclick="exportOrdersCSV()">Export CSV</button>`:''}</div>
 
-    ${pendingUpi.length ? `
+    ${pendingPayments.length ? `
     <div class="note-banner danger" style="margin-bottom:16px;">
-      ⚠️ <b>${pendingUpi.length} UPI payment${pendingUpi.length>1?'s':''} need verification.</b>
-      Check your GPay/PhonePe app and confirm below.
+      ⚠️ <b>${pendingPayments.length} payment${pendingPayments.length>1?'s':''} need verification.</b>
+      Check your UPI app / bank statement and confirm below.
     </div>` : ''}
 
     <div class="admin-card">
@@ -649,18 +654,19 @@ function renderOrdersAdmin(){
         </thead>
         <tbody>
           ${orders.map(o=>{
-            const isPendingUpi = o.payment==='UPI' && o.paymentStatus==='Pending Verification';
-            const isConfirmedUpi = o.payment==='UPI' && o.paymentStatus==='Paid';
+            const isManualMethod = o.payment==='UPI' || o.payment==='Net Banking';
+            const isPending = isManualMethod && o.paymentStatus==='Pending Verification';
+            const isConfirmed = isManualMethod && o.paymentStatus==='Paid';
             return `
-            <tr style="${isPendingUpi?'background:#fff8ec;':''}">
+            <tr style="${isPending?'background:#fff8ec;':''}">
               <td style="font-size:12px;">${o.id}</td>
               <td style="font-size:11px;color:#8a7480;">${new Date(o.date).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</td>
               <td>${o.customer.name}</td>
               <td>${o.customer.phone}</td>
               <td>
                 ${o.payment}<br>
-                <span style="font-size:11px;color:${isPendingUpi?'#c07000':isConfirmedUpi?'#3f6b41':'#8a7480'};">
-                  ${isPendingUpi?'⏳ Awaiting verification':o.paymentStatus||''}
+                <span style="font-size:11px;color:${isPending?'#c07000':isConfirmed?'#3f6b41':'#8a7480'};">
+                  ${isPending?'⏳ Awaiting verification':o.paymentStatus||''}
                 </span>
               </td>
               <td style="font-weight:500;">${money(o.total)}</td>
@@ -670,12 +676,12 @@ function renderOrdersAdmin(){
                 </select>
               </td>
               <td>
-                ${isPendingUpi ? `
+                ${isPending ? `
                   <button class="mini-btn" style="background:#eef6ef;border-color:#c9dfcb;color:#3f5a41;"
-                    onclick="confirmUpiPayment('${o.id}')">✓ Confirm Payment</button>
+                    onclick="confirmManualPayment('${o.id}')">✓ Confirm Payment</button>
                 ` : ''}
-                ${isConfirmedUpi ? `<span style="font-size:11px;color:#3f5a41;">✓ Paid</span>` : ''}
-                ${(o.status==='Placed'||o.status==='Processing') && o.payment!=='UPI' || (o.status==='Placed'||o.status==='Processing') && isConfirmedUpi ? `
+                ${isConfirmed ? `<span style="font-size:11px;color:#3f5a41;">✓ Paid</span>` : ''}
+                ${(o.status==='Placed'||o.status==='Processing') && !isManualMethod || (o.status==='Placed'||o.status==='Processing') && isConfirmed ? `
                   <button class="mini-btn" style="margin-top:4px;" onclick="bookFakeCourier('${o.id}')">🚚 Book Courier</button>
                 ` : ''}
                 ${o.trackingNumber ? `<div style="font-size:11px;color:#8a7480;margin-top:4px;">${o.courierName||''} ${o.trackingNumber}</div>` : ''}
@@ -690,8 +696,8 @@ function renderOrdersAdmin(){
 async function updateOrderStatus(id, status){
   await db.collection('orders').doc(id).update({status});
 }
-async function confirmUpiPayment(id){
-  if(!confirm('Confirm that you have received this UPI payment?')) return;
+async function confirmManualPayment(id){
+  if(!confirm('Confirm that you have received this payment (checked your UPI app or bank statement)?')) return;
   await db.collection('orders').doc(id).update({
     paymentStatus: 'Paid',
     paymentConfirmedAt: new Date().toISOString(),
@@ -734,7 +740,14 @@ async function deleteReview(id){ if(!confirm('Delete this review?')) return; awa
 /* ===== NEWSLETTER & STOCK ALERT LEADS ===== */
 function renderLeadsAdmin(){
   return `
-    <div class="admin-topbar"><h2>Newsletter &amp; Stock Alerts</h2></div>
+    <div class="admin-topbar"><h2>Messages &amp; Leads</h2></div>
+    <div class="admin-card">
+      <h3 style="margin-bottom:10px;font-size:16px;">Contact Form Messages (${contactMessages.length})</h3>
+      ${contactMessages.length===0?`<p style="font-size:13px;color:#8a7480;">No messages yet.</p>`:`
+      <table class="admin-table"><thead><tr><th>Date</th><th>Name</th><th>Phone</th><th>Email</th><th>Message</th></tr></thead><tbody>
+        ${contactMessages.map(m=>`<tr><td style="font-size:11px;color:#8a7480;">${new Date(m.date).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</td><td>${m.name}</td><td>${m.phone}</td><td>${m.email||'—'}</td><td style="max-width:280px;">${m.message}</td></tr>`).join('')}
+      </tbody></table>`}
+    </div>
     <div class="admin-card">
       <h3 style="margin-bottom:10px;font-size:16px;">Newsletter Subscribers (${newsletterLeads.length})</h3>
       ${newsletterLeads.length===0?`<p style="font-size:13px;color:#8a7480;">No subscribers yet.</p>`:`<div>${newsletterLeads.map(l=>`<span class="tag-pill">${l.email}</span>`).join('')}</div><button class="mini-btn" style="margin-top:12px;" onclick="exportLeadsCSV()">Export CSV</button>`}
