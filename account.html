@@ -8,6 +8,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="shared.css">
 <style>
+/* The real account panel is injected by chrome.js as #wishModalBg/#wishModal
+   (also reused for the wishlist view and size guide). We just make it sit
+   inline on this page instead of floating as a fixed overlay. */
 #wishModalBg{position:static !important;background:none !important;opacity:1 !important;pointer-events:auto !important;padding:0 !important;display:block !important;}
 #wishModalBg .modal{max-width:640px;margin:0 auto;box-shadow:0 10px 40px rgba(58,46,56,0.08);border-radius:20px;border:1px solid var(--stone);}
 #wishModalBg .modal-close{display:none;}
@@ -17,13 +20,8 @@
 
 <div id="chrome-header"></div>
 
-<div class="page-wrap">
+<div class="page-wrap" style="padding-bottom:0;">
   <div class="breadcrumb"><a href="index.html">Shop</a> / My Account</div>
-  <div id="accountRoot">
-    <div class="modal-bg" id="wishModalBg"><div class="modal" id="wishModal">
-      <div style="padding:60px;text-align:center;color:#8a7480;"><div class="spinner-sm" style="margin:0 auto 14px;"></div>Loading your account…</div>
-    </div></div>
-  </div>
 </div>
 
 <div id="chrome-footer"></div>
@@ -39,10 +37,8 @@
 <script src="chrome.js"></script>
 <script>
 injectSharedChrome();
-(function(){
-  const overlayWish = document.querySelectorAll('#chrome-overlays #wishModalBg');
-  if(overlayWish.length) overlayWish[0].id = 'wishModalBgMini';
-})();
+// No rename here — this page wants the REAL #wishModalBg/#wishModal (injected
+// by chrome.js) to keep their real ids, so openSignedInPanel() fills them correctly.
 init();
 let _acctHandled = false;
 function onAuthReady(user){
