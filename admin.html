@@ -184,7 +184,8 @@ const DEFAULT_SETTINGS = {
     {label:'Try Again', type:'none', value:0, weight:10, code:''}
   ],
   paymentUpiId:'', paymentQrImage:'',
-  paymentBank:{ accountName:'', accountNumber:'', ifsc:'', bankName:'' }
+  paymentBank:{ accountName:'', accountNumber:'', ifsc:'', bankName:'' },
+  heroImage:'', categoryBanners:{}
 };
 
 let products = [];
@@ -581,6 +582,7 @@ async function saveWheelPrizes(){
 /* ===== SITE CONTENT ===== */
 function renderContentAdmin(){
   const s = settings;
+  const cats = [...new Set(products.map(p=>p.category))];
   return `
     <div class="admin-topbar"><h2>Site Content</h2></div>
     <div class="admin-card">
@@ -589,6 +591,16 @@ function renderContentAdmin(){
         <div class="field full"><label>Eyebrow Text</label><input id="cfHeroEyebrow" value="${s.heroEyebrow||''}"></div>
         <div class="field full"><label>Hero Title</label><input id="cfHeroTitle" value="${s.heroTitle||''}"></div>
         <div class="field full"><label>Hero Subtitle</label><textarea id="cfHeroSubtitle" rows="2">${s.heroSubtitle||''}</textarea></div>
+      </div>
+      <div style="margin-top:6px;">
+        <label style="display:block;font-size:13px;font-weight:500;margin-bottom:8px;">Hero Background Image (optional)</label>
+        ${s.heroImage ? `<img src="${s.heroImage}" style="width:160px;height:100px;object-fit:cover;border-radius:10px;border:1px solid var(--stone);margin-bottom:8px;display:block;">` : `<p style="font-size:12px;color:#8a7480;margin-bottom:8px;">No image set — the decorative gradient shapes are shown instead.</p>`}
+        <input type="file" id="heroImgInput" accept="image/*" style="display:none" onchange="handleHeroImgUpload(event)">
+        <div style="display:flex;gap:8px;">
+          <button class="mini-btn" onclick="document.getElementById('heroImgInput').click()">${s.heroImage?'Replace':'Upload'} Image</button>
+          ${s.heroImage ? `<button class="mini-btn" onclick="updateSetting('heroImage','')">Remove</button>` : ''}
+        </div>
+        <div id="heroImgStatus" style="font-size:11px;color:#8a7480;margin-top:6px;"></div>
       </div>
     </div>
     <div class="admin-card">
@@ -613,7 +625,82 @@ function renderContentAdmin(){
       `).join('')}
     </div>
     <button class="btn" onclick="saveContent()">Save Site Content</button>
+
+    <div class="admin-card" style="margin-top:24px;">
+      <h3 style="margin-bottom:6px;font-size:16px;">Categories</h3>
+      <p style="font-size:12px;color:#8a7480;margin-bottom:16px;">Categories come from products' assigned category — there's no separate list to maintain. Rename one here to relabel it everywhere at once (updates every product with that category), and optionally add a banner image shown at the top of that category's page.</p>
+      ${cats.length===0 ? `<p style="font-size:13px;color:#8a7480;">No products yet — add some in the Products tab first.</p>` : cats.map(cat=>{
+        const count = products.filter(p=>p.category===cat).length;
+        const banner = (s.categoryBanners||{})[cat];
+        return `
+        <div style="border:1px solid var(--stone);border-radius:12px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <div><b>${cat}</b> <span style="font-size:12px;color:#8a7480;">(${count} product${count===1?'':'s'})</span></div>
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:10px;">
+            <input type="text" id="catRename_${cat}" placeholder="Rename to…" style="flex:1;padding:8px 10px;border:1px solid var(--stone);border-radius:6px;font-size:13px;">
+            <button class="mini-btn" onclick="renameCategory('${cat}')">Rename</button>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;">
+            ${banner ? `<img src="${banner}" style="width:70px;height:44px;object-fit:cover;border-radius:6px;border:1px solid var(--stone);">` : `<span style="font-size:11px;color:#8a7480;">No banner image</span>`}
+            <input type="file" id="catBannerInput_${cat}" accept="image/*" style="display:none" onchange="handleCategoryBannerUpload(event,'${cat}')">
+            <button class="mini-btn" onclick="document.getElementById('catBannerInput_${cat}').click()">${banner?'Replace':'Upload'} Banner</button>
+            ${banner ? `<button class="mini-btn" onclick="removeCategoryBanner('${cat}')">Remove</button>` : ''}
+          </div>
+          <div id="catBannerStatus_${cat}" style="font-size:11px;color:#8a7480;margin-top:6px;"></div>
+        </div>`;
+      }).join('')}
+    </div>
   `;
+}
+async function handleHeroImgUpload(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const statusEl = document.getElementById('heroImgStatus');
+  statusEl.textContent = 'Processing…';
+  try{
+    const base64 = await resizeAndEncode(file, 1200);
+    await db.collection('settings').doc('main').set({heroImage: base64}, {merge:true});
+    statusEl.textContent = '';
+  }catch(err){
+    statusEl.innerHTML = `<span style="color:#c0405f;">Failed: ${err.message}</span>`;
+  }
+}
+async function renameCategory(oldName){
+  const input = document.getElementById('catRename_'+oldName);
+  const newName = input.value.trim();
+  if(!newName){ alert('Enter a new category name.'); return; }
+  if(newName===oldName) return;
+  if(!confirm(`Rename "${oldName}" to "${newName}" on all ${products.filter(p=>p.category===oldName).length} products?`)) return;
+  const batch = db.batch();
+  products.filter(p=>p.category===oldName).forEach(p=>{
+    batch.update(db.collection('products').doc(p.id), {category: newName});
+  });
+  // carry over the banner image too, if one was set
+  const banners = {...(settings.categoryBanners||{})};
+  if(banners[oldName]){ banners[newName] = banners[oldName]; delete banners[oldName]; }
+  await batch.commit();
+  await db.collection('settings').doc('main').set({categoryBanners: banners}, {merge:true});
+  alert('Category renamed.');
+}
+async function handleCategoryBannerUpload(e, cat){
+  const file = e.target.files[0];
+  if(!file) return;
+  const statusEl = document.getElementById('catBannerStatus_'+cat);
+  statusEl.textContent = 'Processing…';
+  try{
+    const base64 = await resizeAndEncode(file, 1200);
+    const banners = {...(settings.categoryBanners||{}), [cat]: base64};
+    await db.collection('settings').doc('main').set({categoryBanners: banners}, {merge:true});
+    statusEl.textContent = '';
+  }catch(err){
+    statusEl.innerHTML = `<span style="color:#c0405f;">Failed: ${err.message}</span>`;
+  }
+}
+async function removeCategoryBanner(cat){
+  const banners = {...(settings.categoryBanners||{})};
+  delete banners[cat];
+  await db.collection('settings').doc('main').set({categoryBanners: banners}, {merge:true});
 }
 async function saveContent(){
   const aboutItems = [0,1,2].map(i=>({title:document.getElementById('cfAboutTitle'+i).value, text:document.getElementById('cfAboutText'+i).value}));
