@@ -48,7 +48,7 @@ const DEFAULT_COUPONS = [
   {id:'FLAT500', code:'FLAT500', type:'flat', value:500, active:true, desc:'Flat ₹500 off on orders above ₹3000', minOrder:3000},
 ];
 const DEFAULT_SETTINGS = {
-  showGST:true, gstRate:5, adminPassword:'admin123', currency:'₹',
+  showGST:true, gstRate:5, currency:'₹',
   shippingThreshold:2500, shippingFee:99,
   heroEyebrow:'— Festive Edit, 2026', heroTitle:'Quiet luxury, cut for real life.',
   heroSubtitle:'ACH Boutique brings together small-batch textiles and considered silhouettes — pieces made to be worn for years, not seasons.',
@@ -71,7 +71,10 @@ const DEFAULT_SETTINGS = {
   ],
   paymentUpiId:'', paymentQrImage:'',
   paymentBank:{ accountName:'', accountNumber:'', ifsc:'', bankName:'' },
-  heroImage:'', categoryBanners:{}
+  heroImage:'', categoryBanners:{},
+  storeAddress:'B61 Palace Orchard, Phase 3\nKolar Road, Bhopal 462042, MP',
+  storePhone:'+91 93007 60840', storeEmail:'hello@achboutique.in',
+  storeTagline:'Considered clothing, made in small batches.'
 };
 const WHEEL_COLORS = ['#e08ba8','#b79ee0','#eab3c6','#e08ba8','#b79ee0','#eab3c6','#e08ba8','#b79ee0'];
 
@@ -220,6 +223,10 @@ function applySettingsToDOM(){
   if($('saleTitle')) $('saleTitle').textContent = settings.saleTitle || '';
   if($('saleSubtitle')) $('saleSubtitle').textContent = settings.saleSubtitle || '';
   if($('gstFooterNote')) $('gstFooterNote').textContent = settings.showGST ? `Prices inclusive of GST (${settings.gstRate}%)` : '';
+  if($('footerTagline')) $('footerTagline').textContent = settings.storeTagline || '';
+  if($('footerEmail')) $('footerEmail').textContent = settings.storeEmail || '';
+  if($('footerPhone')) $('footerPhone').textContent = settings.storePhone || '';
+  if($('footerAddress')) $('footerAddress').innerHTML = (settings.storeAddress || '').replace(/\n/g,'<br>');
   if($('aboutGrid')){
     const ai = settings.aboutItems || DEFAULT_SETTINGS.aboutItems;
     $('aboutGrid').innerHTML = ai.map(a=>`<div><h3>${a.title}</h3><p>${a.text}</p></div>`).join('');
