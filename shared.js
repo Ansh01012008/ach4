@@ -175,8 +175,15 @@ function listenAll(){
 
   db.collection('products').onSnapshot(snap=>{
     products = snap.docs.map(d=>({id:d.id, ...d.data()}));
-    renderCatTiles(); renderFilterBar(); renderGrid();
-    if(firstProductsLoad){ firstProductsLoad=false; renderRecentlyViewed(); renderInstaGrid(); }
+    if(typeof renderCatTiles==='function') renderCatTiles();
+    if(typeof renderFilterBar==='function') renderFilterBar();
+    if(typeof renderGrid==='function') renderGrid();
+    if(firstProductsLoad){
+      firstProductsLoad=false;
+      if(typeof renderRecentlyViewed==='function') renderRecentlyViewed();
+      if(typeof renderInstaGrid==='function') renderInstaGrid();
+    }
+    if(typeof onProductsLoaded === 'function') onProductsLoaded();
   }, err=>console.warn('products listener', err));
 
 
@@ -230,14 +237,16 @@ const CAT_IMAGES = {
   'Accessories': ph('Accessories','#cda45e','#eab3c6')
 };
 function renderCatTiles(){
+  const el = document.getElementById('catTiles'); if(!el) return;
   const cats = [...new Set(products.map(p=>p.category))].slice(0,4);
-  document.getElementById('catTiles').innerHTML = cats.map(c=>`
+  el.innerHTML = cats.map(c=>`
     <div class="cat-tile" onclick="filterCategory('${c}')"><img src="${CAT_IMAGES[c] || ph(c,'#8a6a54','#c98a7d')}"><div class="label">${c}</div></div>
   `).join('');
 }
 function renderFilterBar(){
+  const el = document.getElementById('filterBar'); if(!el) return;
   const cats = ['all', ...new Set(products.map(p=>p.category))];
-  document.getElementById('filterBar').innerHTML = cats.map(c=>
+  el.innerHTML = cats.map(c=>
     `<button class="filter-chip ${currentFilter===c?'active':''}" onclick="filterCategory('${c}')">${c==='all'?'All':c}</button>`
   ).join('');
 }
@@ -257,7 +266,7 @@ function ratingFor(id){
   return {rating:(4 + (hash%10)/10).toFixed(1), count: 20 + (hash%180)};
 }
 function renderGrid(){
-  const grid = document.getElementById('productGrid');
+  const grid = document.getElementById('productGrid'); if(!grid) return;
   let list = currentFilter==='all' ? products : (currentFilter==='New' ? products.filter(p=>p.badge==='New') : products.filter(p=>p.category===currentFilter));
   list = list.filter(p=>p.price<=priceMax);
   list = sortList(list);
@@ -830,8 +839,8 @@ function trackRecentlyViewed(id){
   renderRecentlyViewed();
 }
 function renderRecentlyViewed(){
+  const section = document.getElementById('recentlyViewed'); if(!section) return;
   const rv = loadLS('ach_recently_viewed', []).filter(id=>products.find(p=>p.id===id));
-  const section = document.getElementById('recentlyViewed');
   if(rv.length===0){ section.style.display='none'; return; }
   section.style.display='block'; section.classList.add('in');
   document.getElementById('rvRow').innerHTML = rv.map(id=>{
@@ -840,8 +849,9 @@ function renderRecentlyViewed(){
   }).join('');
 }
 function renderInstaGrid(){
+  const el = document.getElementById('instaGrid'); if(!el) return;
   const imgs = products.slice(0,5).map(p=>p.images[0]);
-  document.getElementById('instaGrid').innerHTML = imgs.map(img=>`<div class="insta-item"><img src="${img}"></div>`).join('');
+  el.innerHTML = imgs.map(img=>`<div class="insta-item"><img src="${img}"></div>`).join('');
 }
 
 /* REVIEWS — Firestore collection "reviews" */
