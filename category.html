@@ -16,6 +16,8 @@
   <div class="breadcrumb"><a href="index.html">Shop</a> / <span id="crumbCat">Category</span></div>
 </div>
 
+<div id="catBannerWrap"></div>
+
 <section class="section" id="shop" style="padding-top:0;">
   <div class="section-head">
     <div><h2 id="catHeading">Category</h2></div>
@@ -58,6 +60,11 @@ document.getElementById('pageTitle').textContent = (_cat==='all'?'All Products':
 function onProductsLoaded(){
   renderFilterBar();
   renderGrid();
+}
+function onSettingsApplied(){
+  const banner = (settings.categoryBanners||{})[_cat];
+  const wrap = document.getElementById('catBannerWrap');
+  wrap.innerHTML = banner ? `<div class="page-wrap" style="padding-bottom:0;"><img src="${banner}" style="width:100%;max-height:220px;object-fit:cover;border-radius:16px;"></div>` : '';
 }
 init();
 </script>
