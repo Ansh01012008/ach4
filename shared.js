@@ -1000,56 +1000,23 @@ async function init(){
 // init() is called by the page after injectSharedChrome()
 
 
-let _confirmationResult = null;
-let _recaptchaVerifier = null;
-let _recaptchaReady = false;
 let _postLoginCallback = null;
+
+/* Firebase Auth's email/password provider needs an email-shaped identifier.
+   We derive one from the phone number so customers only ever see "phone number". */
+function phoneToEmail(phone){ return phone + '@ach-boutique.local'; }
 
 function authErrMsg(e){
   const code = e.code || '';
-  if(code.includes('invalid-phone')) return 'Invalid phone number. Use a 10-digit Indian number.';
-  if(code.includes('too-many-requests')) return 'Too many attempts. Please wait a few minutes.';
-  if(code.includes('captcha-check-failed')) return 'Security check failed. Please refresh and try again.';
-  if(code.includes('quota-exceeded')) return 'SMS quota exceeded. Try again later.';
+  if(code.includes('email-already-in-use')) return 'An account already exists with this phone number. Try signing in instead.';
+  if(code.includes('weak-password')) return 'Password should be at least 6 characters.';
+  if(code.includes('wrong-password') || code.includes('invalid-credential') || code.includes('invalid-login-credentials')) return 'Incorrect phone number or password.';
+  if(code.includes('user-not-found')) return 'No account found with this phone number. Create one instead?';
+  if(code.includes('invalid-email')) return 'Enter a valid 10-digit phone number.';
+  if(code.includes('too-many-requests')) return 'Too many attempts. Please wait a few minutes and try again.';
   if(code.includes('network-request-failed')) return 'Network error. Check your connection.';
-  if(code.includes('invalid-verification-code')) return 'Incorrect OTP. Please check and try again.';
-  if(code.includes('session-expired')) return 'OTP expired. Please request a new one.';
-  if(code.includes('not-enabled') || code.includes('operation-not-allowed')) return 'Phone sign-in is not enabled. Enable it in Firebase Console → Authentication → Sign-in method → Phone.';
-  if(code.includes('unauthorized-domain')) return 'This domain is not authorized. Add it in Firebase Console → Authentication → Settings → Authorized domains.';
   return (e.message || 'Something went wrong. Please try again.').replace('Firebase: ','').split(' (auth/')[0];
 }
-
-function resetRecaptcha(){
-  if(_recaptchaVerifier){
-    try { _recaptchaVerifier.clear(); } catch(e){}
-    _recaptchaVerifier = null;
-  }
-  _recaptchaReady = false;
-  // clear the container so reCAPTCHA can re-render
-  const el = document.getElementById('recaptcha-container');
-  if(el) el.innerHTML = '';
-}
-
-async function initRecaptchaIfNeeded(){
-  if(_recaptchaReady && _recaptchaVerifier) return;
-  resetRecaptcha();
-  _recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
-    size: 'invisible',
-    callback: () => {},
-    'expired-callback': () => { resetRecaptcha(); initRecaptchaIfNeeded(); }
-  });
-  try {
-    await _recaptchaVerifier.render();
-    _recaptchaReady = true;
-    console.log('reCAPTCHA ready');
-  } catch(e){
-    console.error('reCAPTCHA render failed:', e);
-    resetRecaptcha();
-  }
-}
-
-// init as soon as page loads — recaptcha-container is always in DOM
-window.addEventListener('load', ()=> initRecaptchaIfNeeded());
 
 function openAccountOrLogin(){
   if(window.currentUser){
@@ -1061,7 +1028,7 @@ function openAccountOrLogin(){
 }
 
 async function openSignedInPanel(){
-  const phone = window.currentUser.phoneNumber || '';
+  const phone = window.currentUser.displayName || '';
   const uid = window.currentUser.uid;
 
   // fetch this user's orders
@@ -1101,86 +1068,95 @@ async function openSignedInPanel(){
 
 function openAuthModal(callback){
   _postLoginCallback = callback || null;
-  resetAuthModal();
+  switchAuthStep('login');
   document.getElementById('authModalBg').classList.add('show');
-  // recaptcha already initialized on page load, nothing to do here
 }
 
 function closeAuthModal(){
   document.getElementById('authModalBg').classList.remove('show');
 }
 
-function resetAuthModal(){
-  document.getElementById('authStep1').style.display = '';
-  document.getElementById('authStep2').style.display = 'none';
+/* Swaps between the login form and the create-account form inside the same
+   modal, and resets error/inputs. Also used by signup.html / login.html. */
+function switchAuthStep(step){
+  const isLogin = step==='login';
+  document.getElementById('authStepLogin').style.display = isLogin ? '' : 'none';
+  document.getElementById('authStepSignup').style.display = isLogin ? 'none' : '';
   document.getElementById('authStepDone').style.display = 'none';
-  document.getElementById('authPhone').value = '';
-  document.getElementById('authOtpInput').value = '';
-  document.getElementById('authErr1').textContent = '';
-  document.getElementById('authErr2').textContent = '';
-  const btn = document.getElementById('authSendBtn');
-  btn.disabled = false; btn.textContent = 'Send OTP';
+  ['authErrLogin','authErrSignup'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=''; });
+  const loginBtn = document.getElementById('authLoginBtn');
+  if(loginBtn){ loginBtn.disabled=false; loginBtn.textContent='Sign In'; }
+  const signupBtn = document.getElementById('authSignupBtn');
+  if(signupBtn){ signupBtn.disabled=false; signupBtn.textContent='Create Account'; }
 }
+function resetAuthModal(){ switchAuthStep('login'); }
 
-async function sendFirebaseOtp(){
-  const phone = document.getElementById('authPhone').value.trim();
-  const err = document.getElementById('authErr1');
-  if(phone.length !== 10){ err.textContent = 'Enter a valid 10-digit number.'; return; }
-  const btn = document.getElementById('authSendBtn');
-  btn.disabled = true; btn.textContent = 'Sending…'; err.textContent = '';
+async function signInWithPassword(){
+  const phone = document.getElementById('authPhoneLogin').value.trim();
+  const password = document.getElementById('authPasswordLogin').value;
+  const err = document.getElementById('authErrLogin');
+  if(phone.length !== 10){ err.textContent = 'Enter a valid 10-digit mobile number.'; return; }
+  if(!password){ err.textContent = 'Enter your password.'; return; }
+  const btn = document.getElementById('authLoginBtn');
+  btn.disabled = true; btn.textContent = 'Signing in…'; err.textContent = '';
   try {
-    // re-init only if somehow not ready (should already be ready from page load)
-    if(!_recaptchaReady) await initRecaptchaIfNeeded();
-    if(!_recaptchaVerifier) throw new Error('Security check not ready. Please refresh the page and try again.');
-    _confirmationResult = await auth.signInWithPhoneNumber('+91' + phone, _recaptchaVerifier);
-    document.getElementById('authOtpHint').textContent = `OTP sent to +91 ${phone}`;
-    document.getElementById('authStep1').style.display = 'none';
-    document.getElementById('authStep2').style.display = '';
-    setTimeout(()=>document.getElementById('authOtpInput').focus(), 100);
-  } catch(e) {
-    console.error('sendOtp error:', e);
-    err.textContent = authErrMsg(e);
-    btn.disabled = false; btn.textContent = 'Send OTP';
-    resetRecaptcha();
-  }
-}
-
-async function verifyFirebaseOtp(){
-  const otp = document.getElementById('authOtpInput').value.trim();
-  const err = document.getElementById('authErr2');
-  if(otp.length !== 6){ err.textContent = 'Enter the 6-digit OTP.'; return; }
-  const btn = document.getElementById('authVerifyBtn');
-  btn.disabled = true; btn.textContent = 'Verifying…'; err.textContent = '';
-  try {
-    const result = await _confirmationResult.confirm(otp);
-    const user = result.user;
-    // save/update customer doc in Firestore
+    const cred = await auth.signInWithEmailAndPassword(phoneToEmail(phone), password);
+    const user = cred.user;
     await db.collection('customers').doc(user.uid).set({
-      phone: user.phoneNumber,
-      uid: user.uid,
-      lastLogin: new Date().toISOString()
+      phone, uid: user.uid, lastLogin: new Date().toISOString()
     }, { merge: true });
-    // show success step briefly then close
-    document.getElementById('authStep2').style.display = 'none';
-    document.getElementById('authStepDone').style.display = '';
-    document.getElementById('authDoneMsg').textContent = `Welcome! Signed in as ${user.phoneNumber}`;
-    setTimeout(()=>{
-      closeAuthModal();
-      showToast('Signed in successfully 🎉');
-      if(_postLoginCallback) { _postLoginCallback(); _postLoginCallback = null; }
-    }, 1400);
-  } catch(e) {
-    console.error('verifyOtp error:', e);
+    showAuthSuccess(phone);
+  } catch(e){
+    console.error('signIn error:', e);
     err.textContent = authErrMsg(e);
-    btn.disabled = false; btn.textContent = 'Verify & Sign In';
+    btn.disabled = false; btn.textContent = 'Sign In';
   }
+}
+
+async function signUpWithPassword(){
+  const phone = document.getElementById('authPhoneSignup').value.trim();
+  const password = document.getElementById('authPasswordSignup').value;
+  const confirm = document.getElementById('authPasswordConfirm').value;
+  const err = document.getElementById('authErrSignup');
+  if(phone.length !== 10){ err.textContent = 'Enter a valid 10-digit mobile number.'; return; }
+  if(password.length < 6){ err.textContent = 'Password must be at least 6 characters.'; return; }
+  if(password !== confirm){ err.textContent = 'Passwords do not match.'; return; }
+  const btn = document.getElementById('authSignupBtn');
+  btn.disabled = true; btn.textContent = 'Creating account…'; err.textContent = '';
+  try {
+    const cred = await auth.createUserWithEmailAndPassword(phoneToEmail(phone), password);
+    const user = cred.user;
+    await user.updateProfile({ displayName: phone });
+    await db.collection('customers').doc(user.uid).set({
+      phone, uid: user.uid, createdAt: new Date().toISOString(), lastLogin: new Date().toISOString()
+    }, { merge: true });
+    showAuthSuccess(phone, true);
+  } catch(e){
+    console.error('signUp error:', e);
+    err.textContent = authErrMsg(e);
+    btn.disabled = false; btn.textContent = 'Create Account';
+  }
+}
+
+function showAuthSuccess(phone, isNew){
+  document.getElementById('authStepLogin').style.display = 'none';
+  document.getElementById('authStepSignup').style.display = 'none';
+  document.getElementById('authStepDone').style.display = '';
+  document.getElementById('authDoneMsg').textContent = isNew
+    ? `Account created! Signed in as +91 ${phone}`
+    : `Welcome back! Signed in as +91 ${phone}`;
+  setTimeout(()=>{
+    closeAuthModal();
+    showToast(isNew ? 'Account created 🎉' : 'Signed in successfully 🎉');
+    if(_postLoginCallback){ _postLoginCallback(); _postLoginCallback = null; }
+  }, 1400);
 }
 
 function updateAccountIcon(){
   const inner = document.getElementById('accountIconInner');
   if(!inner) return;
   if(window.currentUser){
-    const phone = window.currentUser.phoneNumber || '';
+    const phone = window.currentUser.displayName || '';
     // show last 4 digits as a small pill
     const last4 = phone.slice(-4);
     inner.innerHTML = `<div class="account-initial">${last4}</div>`;
