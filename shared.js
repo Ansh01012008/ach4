@@ -70,7 +70,8 @@ const DEFAULT_SETTINGS = {
     {label:'Try Again', type:'none', value:0, weight:10, code:''}
   ],
   paymentUpiId:'', paymentQrImage:'',
-  paymentBank:{ accountName:'', accountNumber:'', ifsc:'', bankName:'' }
+  paymentBank:{ accountName:'', accountNumber:'', ifsc:'', bankName:'' },
+  heroImage:'', categoryBanners:{}
 };
 const WHEEL_COLORS = ['#e08ba8','#b79ee0','#eab3c6','#e08ba8','#b79ee0','#eab3c6','#e08ba8','#b79ee0'];
 
@@ -189,17 +190,36 @@ function listenAll(){
    DYNAMIC CONTENT FROM SETTINGS
    ========================================================= */
 function applySettingsToDOM(){
-  document.getElementById('announceText').textContent = (settings.announcementText||'') + '   •   ' + (settings.announcementText||'');
-  document.getElementById('heroEyebrow').textContent = settings.heroEyebrow || '';
-  document.getElementById('heroTitle').textContent = settings.heroTitle || '';
-  document.getElementById('heroSubtitle').textContent = settings.heroSubtitle || '';
-  document.getElementById('saleTitle').textContent = settings.saleTitle || '';
-  document.getElementById('saleSubtitle').textContent = settings.saleSubtitle || '';
-  document.getElementById('gstFooterNote').textContent = settings.showGST ? `Prices inclusive of GST (${settings.gstRate}%)` : '';
-  const ai = settings.aboutItems || DEFAULT_SETTINGS.aboutItems;
-  document.getElementById('aboutGrid').innerHTML = ai.map(a=>`<div><h3>${a.title}</h3><p>${a.text}</p></div>`).join('');
-  renderCountdown();
-  document.getElementById('priceSlider').max = Math.max(6000, ...products.map(p=>p.price||0));
+  // Safe-navigation everywhere: several of these elements (hero, about grid,
+  // price slider) only exist on index.html — on other pages they're null,
+  // and without guards that throw and silently kills everything after it,
+  // including footer/header updates that DO exist on every page.
+  const $ = id => document.getElementById(id);
+  if($('announceText')) $('announceText').textContent = (settings.announcementText||'') + '   •   ' + (settings.announcementText||'');
+  if($('heroEyebrow')) $('heroEyebrow').textContent = settings.heroEyebrow || '';
+  if($('heroTitle')) $('heroTitle').textContent = settings.heroTitle || '';
+  if($('heroSubtitle')) $('heroSubtitle').textContent = settings.heroSubtitle || '';
+  if($('heroVisual')){
+    if(settings.heroImage){
+      $('heroVisual').style.backgroundImage = `url('${settings.heroImage}')`;
+      $('heroVisual').style.backgroundSize = 'cover';
+      $('heroVisual').style.backgroundPosition = 'center';
+      $('heroVisual').classList.add('has-image');
+    } else {
+      $('heroVisual').style.backgroundImage = '';
+      $('heroVisual').classList.remove('has-image');
+    }
+  }
+  if($('saleTitle')) $('saleTitle').textContent = settings.saleTitle || '';
+  if($('saleSubtitle')) $('saleSubtitle').textContent = settings.saleSubtitle || '';
+  if($('gstFooterNote')) $('gstFooterNote').textContent = settings.showGST ? `Prices inclusive of GST (${settings.gstRate}%)` : '';
+  if($('aboutGrid')){
+    const ai = settings.aboutItems || DEFAULT_SETTINGS.aboutItems;
+    $('aboutGrid').innerHTML = ai.map(a=>`<div><h3>${a.title}</h3><p>${a.text}</p></div>`).join('');
+  }
+  if($('countdown')) renderCountdown();
+  if($('priceSlider')) $('priceSlider').max = Math.max(6000, ...products.map(p=>p.price||0));
+  if(typeof onSettingsApplied === 'function') onSettingsApplied();
 }
 
 /* =========================================================
