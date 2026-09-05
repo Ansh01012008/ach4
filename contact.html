@@ -34,9 +34,9 @@
   <div class="contact-info">
     <h1>Get in Touch</h1>
     <p>Questions about an order, sizing, or a piece you're eyeing? We usually reply within a few hours.</p>
-    <div class="contact-item"><span class="ico">✉️</span><div><div class="t1">Email</div><div class="t2">hello@achboutique.in</div></div></div>
-    <div class="contact-item"><span class="ico">📞</span><div><div class="t1">Phone</div><div class="t2">+91 93007 60840</div></div></div>
-    <div class="contact-item"><span class="ico">📍</span><div><div class="t1">Studio</div><div class="t2">B61 Palace Orchard, Phase 3<br>Kolar Road, Bhopal 462042, MP</div></div></div>
+    <div class="contact-item"><span class="ico">✉️</span><div><div class="t1">Email</div><div class="t2" id="ctInfoEmail">hello@achboutique.in</div></div></div>
+    <div class="contact-item"><span class="ico">📞</span><div><div class="t1">Phone</div><div class="t2" id="ctInfoPhone">+91 93007 60840</div></div></div>
+    <div class="contact-item"><span class="ico">📍</span><div><div class="t1">Studio</div><div class="t2" id="ctInfoAddress">B61 Palace Orchard, Phase 3<br>Kolar Road, Bhopal 462042, MP</div></div></div>
     <div class="contact-item"><span class="ico">📦</span><div><div class="t1">Track an existing order?</div><div class="t2"><a href="track.html" style="color:var(--rose);text-decoration:underline;">Use Track Order</a> instead — it's faster.</div></div></div>
   </div>
 
@@ -66,6 +66,12 @@
 <script>
 injectSharedChrome();
 init();
+
+function onSettingsApplied(){
+  document.getElementById('ctInfoEmail').textContent = settings.storeEmail || '';
+  document.getElementById('ctInfoPhone').textContent = settings.storePhone || '';
+  document.getElementById('ctInfoAddress').innerHTML = (settings.storeAddress||'').replace(/\n/g,'<br>');
+}
 
 async function submitContactForm(){
   const name = document.getElementById('ctName').value.trim();
