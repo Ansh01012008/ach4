@@ -1228,19 +1228,6 @@ window.openCheckout = function(){
   if(_origOpenCheckout) _origOpenCheckout();
 };
 
-/* ---- Replace the fake UPI input with a real deeplink ---- */
-
-// Override goToGateway to intercept UPI selection
-const _origGoToGateway = window.goToGateway;
-window.goToGateway = function(){
-  if(selectedPayment === 'upi'){
-    // save order first, then show UPI modal
-    launchUpiFlow();
-    return;
-  }
-  _origGoToGateway();
-};
-
 async function launchManualPayment(method){
   // method is 'UPI' or 'Net Banking' — both are manual/offline collection (no payment gateway).
   const t = orderTotals();
