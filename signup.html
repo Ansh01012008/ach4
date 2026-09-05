@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Create Account — ACH Boutique</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+/* The real auth forms are injected by chrome.js as #authModalBg (fixed-position
+   overlay by default). On this page we want it inline, and opened straight
+   to the "create account" form instead of "sign in". */
+#authModalBg{position:static !important;background:none !important;opacity:1 !important;pointer-events:auto !important;padding:0 !important;display:block !important;}
+#authModalBg .auth-box{max-width:440px;margin:20px auto 60px;box-shadow:0 10px 40px rgba(58,46,56,0.08);border-radius:20px;border:1px solid var(--stone);position:relative;}
+#authModalBg .modal-close{display:none;}
+</style>
+</head>
+<body>
+
+<div id="chrome-header"></div>
+
+<div class="page-wrap" style="max-width:600px;padding-bottom:0;">
+  <div class="breadcrumb"><a href="index.html">Shop</a> / Create Account</div>
+</div>
+
+<div id="chrome-footer"></div>
+<div id="chrome-overlays"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>emailjs.init('I4iWZBJq_43MymLwS');</script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="shared.js"></script>
+<script src="chrome.js"></script>
+<script>
+injectSharedChrome();
+init();
+let _signupHandled = false;
+function onAuthReady(user){
+  if(_signupHandled) return;
+  if(user){ _signupHandled = true; window.location.href = 'account.html'; }
+  else {
+    _signupHandled = true;
+    _postLoginCallback = function(){ window.location.href = 'account.html'; };
+    switchAuthStep('signup');
+    document.getElementById('authModalBg').classList.add('show');
+  }
+}
+</script>
+
+</body>
+</html>
