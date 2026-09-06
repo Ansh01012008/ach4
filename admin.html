@@ -140,6 +140,19 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+
+/* Secondary Firebase app — the separate invoicing site's project.
+   Named 'billing' so it doesn't collide with the default ACH Boutique app. */
+const billingConfig = {
+  apiKey: "AIzaSyD-F1B_OkEi1CdIVH_kC5KkovPm4kbSdyc",
+  authDomain: "ach-billing-e347a.firebaseapp.com",
+  projectId: "ach-billing-e347a",
+  storageBucket: "ach-billing-e347a.firebasestorage.app",
+  messagingSenderId: "312474917217",
+  appId: "1:312474917217:web:f00da7522b8ee949a08d20"
+};
+const billingApp = firebase.initializeApp(billingConfig, 'billing');
+const billingDb = billingApp.firestore();
 const storage = firebase.storage();
 </script>
 
@@ -797,6 +810,9 @@ function renderOrdersAdmin(){
                   <button class="mini-btn" style="margin-top:4px;" onclick="bookFakeCourier('${o.id}')">🚚 Book Courier</button>
                 ` : ''}
                 ${o.trackingNumber ? `<div style="font-size:11px;color:#8a7480;margin-top:4px;">${o.courierName||''} ${o.trackingNumber}</div>` : ''}
+                ${o.invoiceNum
+                  ? `<div style="font-size:11px;color:#3f5a41;margin-top:4px;">🧾 ${o.invoiceNum}</div>`
+                  : `<button class="mini-btn" style="margin-top:4px;" onclick="generateInvoice('${o.id}')">🧾 Generate Invoice</button>`}
               </td>
             </tr>`;
           }).join('')}
@@ -805,8 +821,96 @@ function renderOrdersAdmin(){
     </div>
   `;
 }
-async function updateOrderStatus(id, status){
-  await db.collection('orders').doc(id).update({status});
+async function generateInvoice(orderId){
+  const o = orders.find(x=>x.id===orderId);
+  if(!o){ alert('Order not found.'); return; }
+  if(o.invoiceNum){ alert('Already invoiced as ' + o.invoiceNum); return; }
+  if(!confirm(`Generate an invoice for order ${orderId} in your billing app?`)) return;
+
+  try{
+    // Read the current invoices array (stored as a JSON STRING in a "value"
+    // field — matches exactly how the billing app itself stores it).
+    const doc = await billingDb.collection('ach-billing').doc('ach_inv').get();
+    let invoices = [];
+    if(doc.exists && doc.data().value){
+      try{ invoices = JSON.parse(doc.data().value); }catch(e){ invoices = []; }
+    }
+
+    // Auto-increment ACH-000X based on the highest existing number
+    let maxNum = 0;
+    invoices.forEach(inv=>{
+      const m = /ACH-(\d+)/.exec(inv.invNum||'');
+      if(m) maxNum = Math.max(maxNum, parseInt(m[1],10));
+    });
+    const invNum = 'ACH-' + String(maxNum+1).padStart(4,'0');
+
+    const addrParts = [o.customer.address, o.customer.city, o.customer.pin].filter(Boolean);
+    const isPaid = o.paymentStatus === 'Paid';
+    const newInvoice = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2,10),
+      invNum,
+      invDate: (o.date||new Date().toISOString()).slice(0,10),
+      ddate: '', tdate: '',
+      status: isPaid ? 'paid' : 'pending',
+      bagNo: '', designer: '', preparedby: '',
+      custName: o.customer.name || '',
+      custPhone: (o.customer.phone||'').replace(/^\+?91/,''),
+      custAddr: addrParts.join(', '),
+      advance: isPaid ? o.total : 0,
+      grand: o.total,
+      balance: isPaid ? 0 : o.total,
+      notes: `ACH Boutique order ${orderId} (${o.payment})`,
+      items: o.items.map(it=>({
+        name: it.name + (it.size?` (${it.size})`:''),
+        rate: it.price, qty: it.qty, amt: it.price*it.qty
+      })),
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    invoices.unshift(newInvoice);
+
+    await billingDb.collection('ach-billing').doc('ach_inv').set({
+      value: JSON.stringify(invoices),
+      updatedAt: Date.now()
+    });
+
+    // Also add/update this customer in the billing app's customer list,
+    // matched by phone (falling back to name if phone is blank on either side).
+    const custDoc = await billingDb.collection('ach-billing').doc('ach_cust').get();
+    let customers = [];
+    if(custDoc.exists && custDoc.data().value){
+      try{ customers = JSON.parse(custDoc.data().value); }catch(e){ customers = []; }
+    }
+    const custPhoneClean = (o.customer.phone||'').replace(/^\+?91/,'');
+    const existing = customers.find(c =>
+      (custPhoneClean && c.phone === custPhoneClean) ||
+      (!custPhoneClean && c.name === o.customer.name)
+    );
+    if(existing){
+      // fill in anything the existing record is missing, don't overwrite what's already there
+      if(!existing.phone && custPhoneClean) existing.phone = custPhoneClean;
+      if(!existing.addr && addrParts.length) existing.addr = addrParts.join(', ');
+    } else {
+      customers.push({
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2,10),
+        name: o.customer.name || '',
+        phone: custPhoneClean,
+        addr: addrParts.join(', ')
+      });
+    }
+    await billingDb.collection('ach-billing').doc('ach_cust').set({
+      value: JSON.stringify(customers),
+      updatedAt: Date.now()
+    });
+
+    // Mark the order as invoiced on our side too, so we don't double-invoice
+    await db.collection('orders').doc(orderId).update({ invoiceNum: invNum });
+
+    alert(`Invoice ${invNum} created — open your billing app to view/print/share it.`);
+  }catch(e){
+    console.error('generateInvoice failed:', e);
+    alert('Could not generate invoice: ' + e.message);
+  }
 }
 async function confirmManualPayment(id){
   if(!confirm('Confirm that you have received this payment (checked your UPI app or bank statement)?')) return;
