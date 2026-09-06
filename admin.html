@@ -862,6 +862,7 @@ async function generateInvoice(orderId){
       grand: o.total,
       balance: isPaid ? 0 : o.total,
       notes: `ACH Boutique order ${orderId} (${o.payment})`,
+      achOrderId: orderId, // links this invoice back to the storefront order (used to un-mark it if this invoice is later deleted)
       items: o.items.map(it=>({
         name: it.name + (it.size?` (${it.size})`:''),
         rate: it.price, qty: it.qty, amt: it.price*it.qty
@@ -917,6 +918,7 @@ async function generateInvoice(orderId){
 /* ===== INVOICES (view/edit directly, from the separate billing app's Firestore project) ===== */
 let invoicesCache = [];
 let editingInvoiceId = null;
+let viewingInvoiceId = null;
 
 async function loadInvoices(){
   const doc = await billingDb.collection('ach-billing').doc('ach_inv').get();
@@ -974,10 +976,12 @@ function drawInvoicesTab(){
               <td>₹${(inv.balance||0).toLocaleString('en-IN')}</td>
               <td><span style="font-size:11px;background:${sc.bg};color:${sc.fg};padding:3px 10px;border-radius:20px;">${inv.status}</span></td>
               <td>
+                <button class="mini-btn" onclick="toggleViewInvoice('${inv.id}')">${viewingInvoiceId===inv.id?'Close':'View'}</button>
                 <button class="mini-btn" onclick="toggleEditInvoice('${inv.id}')">${editingInvoiceId===inv.id?'Close':'Edit'}</button>
                 <button class="mini-btn" onclick="deleteInvoice('${inv.id}')">Delete</button>
               </td>
             </tr>
+            ${viewingInvoiceId===inv.id ? `<tr><td colspan="8">${renderInvoiceViewPanel(inv)}</td></tr>` : ''}
             ${editingInvoiceId===inv.id ? `<tr><td colspan="8">${renderInvoiceEditForm(inv)}</td></tr>` : ''}
             `;
           }).join('')}
@@ -988,7 +992,58 @@ function drawInvoicesTab(){
 }
 function toggleEditInvoice(id){
   editingInvoiceId = editingInvoiceId===id ? null : id;
+  if(editingInvoiceId) viewingInvoiceId = null;
   drawInvoicesTab();
+}
+function toggleViewInvoice(id){
+  viewingInvoiceId = viewingInvoiceId===id ? null : id;
+  if(viewingInvoiceId) editingInvoiceId = null;
+  drawInvoicesTab();
+}
+function renderInvoiceViewPanel(inv){
+  const sc = statusColor(inv.status);
+  return `
+    <div style="background:#fff;border:1px solid var(--stone);border-radius:12px;padding:28px;margin:6px 0;max-width:600px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid var(--charcoal);">
+        <div>
+          <div style="font-size:20px;font-weight:600;">ACH Fashion Studio</div>
+          <div style="font-size:12px;color:#8a7480;">Invoice ${inv.invNum}</div>
+        </div>
+        <span style="font-size:12px;background:${sc.bg};color:${sc.fg};padding:4px 12px;border-radius:20px;height:fit-content;">${inv.status}</span>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;margin-bottom:20px;font-size:13px;">
+        <div>
+          <div style="font-weight:600;margin-bottom:4px;">Bill To</div>
+          <div>${inv.custName||'—'}</div>
+          <div style="color:#8a7480;">${inv.custPhone||''}</div>
+          <div style="color:#8a7480;">${inv.custAddr||''}</div>
+        </div>
+        <div style="text-align:right;">
+          <div><b>Date:</b> ${inv.invDate||'—'}</div>
+          ${inv.ddate?`<div><b>Delivery:</b> ${inv.ddate}</div>`:''}
+          ${inv.tdate?`<div><b>Trial:</b> ${inv.tdate}</div>`:''}
+          ${inv.bagNo?`<div><b>Bag No:</b> ${inv.bagNo}</div>`:''}
+        </div>
+      </div>
+
+      <table class="admin-table" style="margin-bottom:16px;">
+        <thead><tr><th>Item</th><th>Rate</th><th>Qty</th><th>Amount</th></tr></thead>
+        <tbody>
+          ${inv.items.map(it=>`<tr><td>${it.name}</td><td>₹${it.rate}</td><td>${it.qty}</td><td>₹${it.amt.toLocaleString('en-IN')}</td></tr>`).join('')}
+        </tbody>
+      </table>
+
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;font-size:13px;margin-bottom:16px;">
+        <div>Subtotal: <b>₹${(inv.grand||0).toLocaleString('en-IN')}</b></div>
+        <div style="color:var(--moss);">Amount Paid: −₹${(inv.advance||0).toLocaleString('en-IN')}</div>
+        <div style="font-size:16px;font-weight:600;border-top:1px solid var(--stone);padding-top:6px;">Balance Due: ₹${(inv.balance||0).toLocaleString('en-IN')}</div>
+      </div>
+
+      ${inv.notes ? `<div style="font-size:12px;color:#8a7480;border-top:1px solid var(--stone);padding-top:12px;">${inv.notes}</div>` : ''}
+      <p style="font-size:11px;color:#a3939c;margin-top:16px;">To print or share via WhatsApp/email, open this invoice in your <a href="https://ansh01012008.github.io/ach/" target="_blank" style="color:var(--rose);">billing app</a>.</p>
+    </div>
+  `;
 }
 function renderInvoiceEditForm(inv){
   return `
@@ -1071,9 +1126,21 @@ async function saveInvoiceEdit(id){
 }
 async function deleteInvoice(id){
   if(!confirm('Delete this invoice permanently? This cannot be undone.')) return;
+  const inv = invoicesCache.find(i=>i.id===id);
   invoicesCache = invoicesCache.filter(i=>i.id!==id);
   try{
     await saveInvoicesBack();
+    // Un-mark the linked order (if any) so "Generate Invoice" becomes available again
+    let orderId = inv?.achOrderId;
+    if(!orderId && inv?.notes){
+      const m = /ACH Boutique order (\S+)/.exec(inv.notes); // fallback for invoices created before this field existed
+      if(m) orderId = m[1];
+    }
+    if(orderId){
+      await db.collection('orders').doc(orderId).update({ invoiceNum: firebase.firestore.FieldValue.delete() });
+      const o = orders.find(x=>x.id===orderId);
+      if(o) delete o.invoiceNum;
+    }
     drawInvoicesTab();
   }catch(e){
     alert('Delete failed: ' + e.message);
