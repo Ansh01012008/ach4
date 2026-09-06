@@ -111,6 +111,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;}
     <div class="admin-nav-item" data-tab="wheel" onclick="setAdminTab('wheel')"><span>Spin Wheel</span></div>
     <div class="admin-nav-item" data-tab="content" onclick="setAdminTab('content')"><span>Site Content</span></div>
     <div class="admin-nav-item" data-tab="orders" onclick="setAdminTab('orders')"><span>Orders</span></div>
+    <div class="admin-nav-item" data-tab="invoices" onclick="setAdminTab('invoices')"><span>Invoices</span></div>
     <div class="admin-nav-item" data-tab="customers" onclick="setAdminTab('customers')"><span>Customers</span></div>
     <div class="admin-nav-item" data-tab="analytics" onclick="setAdminTab('analytics')"><span>Analytics</span></div>
     <div class="admin-nav-item" data-tab="reviews" onclick="setAdminTab('reviews')"><span>Reviews</span></div>
@@ -314,6 +315,7 @@ function setAdminTab(tab){
   else if(tab==='wheel') main.innerHTML = renderWheelAdmin();
   else if(tab==='content') main.innerHTML = renderContentAdmin();
   else if(tab==='orders') main.innerHTML = renderOrdersAdmin();
+  else if(tab==='invoices'){ main.innerHTML = `<div class="admin-topbar"><h2>Invoices</h2></div><div class="admin-card"><div class="spinner-sm"></div> Loading from billing app…</div>`; renderInvoicesAdmin(); }
   else if(tab==='customers') main.innerHTML = renderCustomersAdmin();
   else if(tab==='analytics') main.innerHTML = renderAnalyticsAdmin();
   else if(tab==='reviews') main.innerHTML = renderReviewsAdmin();
@@ -910,6 +912,171 @@ async function generateInvoice(orderId){
   }catch(e){
     console.error('generateInvoice failed:', e);
     alert('Could not generate invoice: ' + e.message);
+  }
+}
+/* ===== INVOICES (view/edit directly, from the separate billing app's Firestore project) ===== */
+let invoicesCache = [];
+let editingInvoiceId = null;
+
+async function loadInvoices(){
+  const doc = await billingDb.collection('ach-billing').doc('ach_inv').get();
+  let list = [];
+  if(doc.exists && doc.data().value){
+    try{ list = JSON.parse(doc.data().value); }catch(e){ list = []; }
+  }
+  invoicesCache = list;
+}
+async function saveInvoicesBack(){
+  await billingDb.collection('ach-billing').doc('ach_inv').set({
+    value: JSON.stringify(invoicesCache),
+    updatedAt: Date.now()
+  });
+}
+async function renderInvoicesAdmin(){
+  try{
+    await loadInvoices();
+  }catch(e){
+    document.getElementById('adminMain').innerHTML = `<div class="admin-topbar"><h2>Invoices</h2></div><div class="admin-card"><p style="color:#c0405f;font-size:13px;">Couldn't load invoices: ${e.message}</p></div>`;
+    return;
+  }
+  if(document.querySelector('.admin-nav-item.active')?.dataset.tab !== 'invoices') return; // tab changed while loading
+  drawInvoicesTab();
+}
+function statusColor(s){
+  return s==='paid' ? {bg:'#eef6ef',fg:'#3f6b41'} : s==='partial' ? {bg:'#fff8ec',fg:'#c07000'} : {bg:'#fdecea',fg:'#b5473a'};
+}
+function drawInvoicesTab(){
+  const main = document.getElementById('adminMain');
+  const totalCollected = invoicesCache.reduce((s,i)=>s+(i.advance||0),0);
+  const totalPending = invoicesCache.reduce((s,i)=>s+(i.balance||0),0);
+
+  main.innerHTML = `
+    <div class="admin-topbar"><h2>Invoices</h2><button class="btn btn-outline" onclick="setAdminTab('invoices')">↻ Refresh</button></div>
+    <div class="dash-cards" style="margin-bottom:16px;">
+      <div class="dash-card"><div class="label">Total Invoices</div><div class="value">${invoicesCache.length}</div></div>
+      <div class="dash-card"><div class="label">Collected</div><div class="value">₹${totalCollected.toLocaleString('en-IN')}</div></div>
+      <div class="dash-card"><div class="label">Pending Balance</div><div class="value">₹${totalPending.toLocaleString('en-IN')}</div></div>
+    </div>
+    <div class="admin-card">
+      ${invoicesCache.length===0 ? `<p style="font-size:13px;color:#8a7480;">No invoices yet — generate one from the Orders tab.</p>` : `
+      <table class="admin-table">
+        <thead><tr><th>Invoice #</th><th>Date</th><th>Customer</th><th>Phone</th><th>Total</th><th>Balance</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody>
+          ${invoicesCache.map(inv=>{
+            const sc = statusColor(inv.status);
+            return `
+            <tr>
+              <td style="font-size:12px;">${inv.invNum}</td>
+              <td style="font-size:11px;color:#8a7480;">${inv.invDate}</td>
+              <td>${inv.custName}</td>
+              <td style="font-size:12px;">${inv.custPhone||'—'}</td>
+              <td style="font-weight:500;">₹${(inv.grand||0).toLocaleString('en-IN')}</td>
+              <td>₹${(inv.balance||0).toLocaleString('en-IN')}</td>
+              <td><span style="font-size:11px;background:${sc.bg};color:${sc.fg};padding:3px 10px;border-radius:20px;">${inv.status}</span></td>
+              <td>
+                <button class="mini-btn" onclick="toggleEditInvoice('${inv.id}')">${editingInvoiceId===inv.id?'Close':'Edit'}</button>
+                <button class="mini-btn" onclick="deleteInvoice('${inv.id}')">Delete</button>
+              </td>
+            </tr>
+            ${editingInvoiceId===inv.id ? `<tr><td colspan="8">${renderInvoiceEditForm(inv)}</td></tr>` : ''}
+            `;
+          }).join('')}
+        </tbody>
+      </table>`}
+    </div>
+  `;
+}
+function toggleEditInvoice(id){
+  editingInvoiceId = editingInvoiceId===id ? null : id;
+  drawInvoicesTab();
+}
+function renderInvoiceEditForm(inv){
+  return `
+    <div style="background:var(--cream);border-radius:12px;padding:20px;margin:6px 0;">
+      <div class="form-grid" style="margin-bottom:14px;">
+        <div class="field"><label>Customer Name</label><input id="inv_name_${inv.id}" value="${inv.custName||''}"></div>
+        <div class="field"><label>Phone</label><input id="inv_phone_${inv.id}" value="${inv.custPhone||''}"></div>
+        <div class="field full"><label>Address</label><input id="inv_addr_${inv.id}" value="${inv.custAddr||''}"></div>
+        <div class="field"><label>Invoice Date</label><input type="date" id="inv_date_${inv.id}" value="${inv.invDate||''}"></div>
+        <div class="field"><label>Status</label>
+          <select id="inv_status_${inv.id}">
+            ${['pending','partial','paid'].map(s=>`<option ${inv.status===s?'selected':''}>${s}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field"><label>Amount Paid (₹)</label><input type="number" id="inv_advance_${inv.id}" value="${inv.advance||0}"></div>
+      </div>
+
+      <label style="font-size:13px;font-weight:500;margin-bottom:8px;display:block;">Items</label>
+      <div id="inv_items_${inv.id}">
+        ${inv.items.map((it,i)=>`
+          <div style="display:flex;gap:8px;margin-bottom:8px;" data-item-row="${i}">
+            <input placeholder="Item" value="${it.name}" style="flex:2;padding:7px 9px;border:1px solid var(--stone);border-radius:6px;font-size:12px;" class="inv-item-name">
+            <input type="number" placeholder="Rate" value="${it.rate}" style="flex:1;padding:7px 9px;border:1px solid var(--stone);border-radius:6px;font-size:12px;" class="inv-item-rate">
+            <input type="number" placeholder="Qty" value="${it.qty}" style="flex:1;padding:7px 9px;border:1px solid var(--stone);border-radius:6px;font-size:12px;" class="inv-item-qty">
+            <button class="mini-btn" onclick="this.parentElement.remove()">✕</button>
+          </div>
+        `).join('')}
+      </div>
+      <button class="mini-btn" style="margin-bottom:14px;" onclick="addInvoiceItemRow('${inv.id}')">+ Add Item</button>
+
+      <div class="field full" style="margin-bottom:14px;"><label>Notes</label><input id="inv_notes_${inv.id}" value="${inv.notes||''}"></div>
+
+      <button class="btn" onclick="saveInvoiceEdit('${inv.id}')">Save Invoice</button>
+    </div>
+  `;
+}
+function addInvoiceItemRow(id){
+  const container = document.getElementById('inv_items_'+id);
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;gap:8px;margin-bottom:8px;';
+  row.innerHTML = `
+    <input placeholder="Item" style="flex:2;padding:7px 9px;border:1px solid var(--stone);border-radius:6px;font-size:12px;" class="inv-item-name">
+    <input type="number" placeholder="Rate" style="flex:1;padding:7px 9px;border:1px solid var(--stone);border-radius:6px;font-size:12px;" class="inv-item-rate">
+    <input type="number" placeholder="Qty" value="1" style="flex:1;padding:7px 9px;border:1px solid var(--stone);border-radius:6px;font-size:12px;" class="inv-item-qty">
+    <button class="mini-btn" onclick="this.parentElement.remove()">✕</button>`;
+  container.appendChild(row);
+}
+async function saveInvoiceEdit(id){
+  const inv = invoicesCache.find(i=>i.id===id);
+  if(!inv) return;
+
+  inv.custName = document.getElementById('inv_name_'+id).value.trim();
+  inv.custPhone = document.getElementById('inv_phone_'+id).value.trim();
+  inv.custAddr = document.getElementById('inv_addr_'+id).value.trim();
+  inv.invDate = document.getElementById('inv_date_'+id).value;
+  inv.status = document.getElementById('inv_status_'+id).value;
+  inv.advance = Number(document.getElementById('inv_advance_'+id).value) || 0;
+  inv.notes = document.getElementById('inv_notes_'+id).value.trim();
+
+  const items = [];
+  document.querySelectorAll(`#inv_items_${id} > div`).forEach(row=>{
+    const name = row.querySelector('.inv-item-name')?.value.trim();
+    const rate = Number(row.querySelector('.inv-item-rate')?.value) || 0;
+    const qty = Number(row.querySelector('.inv-item-qty')?.value) || 0;
+    if(name) items.push({name, rate, qty, amt: rate*qty});
+  });
+  inv.items = items;
+  inv.grand = items.reduce((s,it)=>s+it.amt, 0);
+  inv.balance = Math.max(0, inv.grand - inv.advance);
+  inv.updatedAt = Date.now();
+
+  try{
+    await saveInvoicesBack();
+    editingInvoiceId = null;
+    drawInvoicesTab();
+    alert('Invoice updated.');
+  }catch(e){
+    alert('Save failed: ' + e.message);
+  }
+}
+async function deleteInvoice(id){
+  if(!confirm('Delete this invoice permanently? This cannot be undone.')) return;
+  invoicesCache = invoicesCache.filter(i=>i.id!==id);
+  try{
+    await saveInvoicesBack();
+    drawInvoicesTab();
+  }catch(e){
+    alert('Delete failed: ' + e.message);
   }
 }
 async function confirmManualPayment(id){
