@@ -9,12 +9,15 @@ service cloud.firestore {
     match /settings/{id}   { allow read: if true; allow write: if true; }
     match /reviews/{id}    { allow read: if true; allow write: if true; }
 
-    // orders — anyone can create an order (checkout is guest-friendly),
-    // only the owner can read their own, and updates are needed for the
-    // manual "I've Paid" confirmation flow and admin status changes.
+    // orders — anyone can create an order (checkout is guest-friendly), and
+    // reads are open too: admin.html needs to see every order and has no
+    // Firebase Auth to check against (same trade-off as everywhere else in
+    // this file). This does mean order details (name, phone, address) are
+    // technically readable by anyone who queries this collection directly —
+    // real protection would need Firebase Auth for admin, a bigger change.
     match /orders/{id} {
       allow create: if true;
-      allow read:   if request.auth != null && resource.data.uid == request.auth.uid;
+      allow read: if true;
       allow update: if true;
     }
 
@@ -40,5 +43,12 @@ service cloud.firestore {
     match /newsletter/{id}   { allow create: if true; allow read: if true; }
     match /stockAlerts/{id}  { allow create: if true; allow read: if true; }
     match /contactMessages/{id} { allow create: if true; allow read: if true; }
+
+    // custom tailoring requests — same trade-off as orders above
+    match /customOrders/{id} {
+      allow create: if true;
+      allow read: if true;
+      allow update: if true;
+    }
   }
 }
