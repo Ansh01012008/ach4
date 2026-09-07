@@ -404,8 +404,14 @@ function openProductForm(id){
         <div class="field"><label>Price (₹)</label><input id="pfPrice" type="number" value="${p?p.price:''}"></div>
         <div class="field"><label>MRP / Strike Price (₹)</label><input id="pfMrp" type="number" value="${p?p.mrp:''}"></div>
         <div class="field"><label>Stock Quantity</label><input id="pfStock" type="number" value="${p?p.stock:''}"></div>
+        <div class="field"><label>Sold By</label>
+          <select id="pfUnit">
+            <option value="piece" ${(!p||p.unit!=='meter')?'selected':''}>Piece (normal product)</option>
+            <option value="meter" ${p&&p.unit==='meter'?'selected':''}>Meter (fabric — price above is per meter)</option>
+          </select>
+        </div>
         <div class="field"><label>Badge (optional)</label><input id="pfBadge" value="${p?p.badge||'':''}" placeholder="New / Bestseller / Trending"></div>
-        <div class="field full"><label>Sizes (comma separated)</label><input id="pfSizes" value="${p?p.sizes.join(', '):'S, M, L, XL'}"></div>
+        <div class="field full" id="pfSizesWrap"><label>Sizes (comma separated)</label><input id="pfSizes" value="${p?p.sizes.join(', '):'S, M, L, XL'}" placeholder="Leave as Free Size for fabric — sizes don't apply"></div>
         <div class="field full"><label>Description</label><textarea id="pfDesc" rows="3">${p?p.desc||'':''}</textarea></div>
         <div class="field full">
           <label>Product Images — uploaded to Firebase Storage</label>
@@ -478,12 +484,13 @@ async function saveProduct(){
   const price = Number(document.getElementById('pfPrice').value);
   const mrp = Number(document.getElementById('pfMrp').value) || price;
   const stock = Number(document.getElementById('pfStock').value) || 0;
+  const unit = document.getElementById('pfUnit').value;
   const badge = document.getElementById('pfBadge').value.trim();
   const sizes = document.getElementById('pfSizes').value.split(',').map(s=>s.trim()).filter(Boolean);
   const desc = document.getElementById('pfDesc').value.trim();
   const images = editingImages.length ? editingImages : [ph(name||'Product','#eab3c6','#e08ba8')];
   if(!name || !category || !price){ alert('Please fill in name, category and price.'); return; }
-  const data = {name,category,price,mrp,stock,badge,sizes,desc,images};
+  const data = {name,category,price,mrp,stock,unit,badge,sizes,desc,images};
   const btn = document.getElementById('saveProductBtn');
   btn.textContent = 'Saving…'; btn.setAttribute('disabled','');
   try{
@@ -1209,7 +1216,7 @@ function renderCustomOrderDetail(o){
         </div>
         <div>
           <h4 style="margin-bottom:8px;">Request</h4>
-          <p style="font-size:13px;">Garment: <b>${o.garment}</b><br>Fabric: ${o.fabricSource==='customer'?'Customer-provided':'ACH Boutique fabric'}${o.advancePaid?`<br>Advance noted by customer: ₹${o.advancePaid}`:''}</p>
+          <p style="font-size:13px;">Garment: <b>${o.garment}</b><br>Fabric: ${o.fabricSource==='customer'?'Customer-provided':'ACH Boutique fabric'}${o.selectedFabric?' — '+o.selectedFabric.name:''}${o.advancePaid?`<br>Advance noted by customer: ₹${o.advancePaid}`:''}</p>
         </div>
       </div>
       ${measEntries.length ? `
