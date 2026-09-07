@@ -218,20 +218,31 @@ function ctReviewAndGo(){
   ctGoStep(4);
 }
 
-/* Simple standalone UPI QR + deep link for the optional token advance */
+/* Simple standalone UPI QR + deep link for the optional token advance —
+   shown inline on this same page (no separate tab/window). */
 function ctPayAdvance(){
   const amt = Number(document.getElementById('ctAdvanceAmt').value);
   if(!amt || amt <= 0){ alert('Enter a valid advance amount.'); return; }
   if(!settings.paymentUpiId){ alert('Online advance payment is not set up yet — you can still submit your request and pay in person.'); return; }
   const upiLink = `upi://pay?pa=${settings.paymentUpiId}&pn=${encodeURIComponent('ACH Boutique')}&am=${amt}&cu=INR&tn=${encodeURIComponent('Custom stitching advance')}`;
   const isMobile = window.innerWidth <= 768;
+
   if(isMobile){
+    // On mobile, a UPI deep link is meant to hand off to the customer's UPI
+    // app directly — that's expected/normal, not an extra unwanted page.
     window.location.href = upiLink;
+    document.getElementById('ctAdvanceStatus').textContent = `Opening your UPI app for ₹${amt}… come back here once paid.`;
   } else {
-    window.open(`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiLink)}`, '_blank');
+    // On desktop, show the QR right here on the page instead of opening a new tab.
+    const qrWrap = document.getElementById('ctAdvanceQrWrap');
+    document.getElementById('ctAdvanceQrImg').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiLink)}`;
+    qrWrap.style.display = 'block';
   }
-  document.getElementById('ctAdvanceStatus').textContent = `Scan/pay ₹${amt} via UPI, then submit your request below — we'll match it up.`;
   window._ctAdvancePaid = amt;
+}
+function ctConfirmAdvancePaid(){
+  document.getElementById('ctAdvanceQrWrap').style.display = 'none';
+  document.getElementById('ctAdvanceStatus').textContent = `₹${window._ctAdvancePaid} noted — we'll confirm it on our end when reviewing your request.`;
 }
 
 async function submitCustomOrder(){
@@ -273,6 +284,17 @@ async function submitCustomOrder(){
         message: `Garment: ${data.garment}\nFabric: ${data.fabricSource}\nNotes: ${data.notes}\nSee full details + photos in admin.`
       })
     }).catch(()=>{});
+
+    // Confirmation email to the customer, if they gave one — reuses the same
+    // template/service already proven to work for order confirmations.
+    if(data.customer.email){
+      emailjs.send('service_xu0ot7h', 'template_336mhcg', {
+        to_email: data.customer.email,
+        to_name: data.customer.name,
+        otp_code: `Custom Stitching Request Received ✓\n\nReference ID: ${requestId}\n\nGarment: ${data.garment}\nFabric: ${data.fabricSource==='customer'?"Your own fabric":"ACH Boutique fabric"}${data.selectedFabric?' ('+data.selectedFabric.name+')':''}\n\nWe'll review your measurements and design reference, then get back to you with a price quote and expected delivery date.\n\nTrack your request anytime at ${window.location.origin}/track.html using this Reference ID and your phone number.\n\nThank you for choosing ACH Boutique!`,
+        order_note: `Custom Stitching Request: ${requestId}`
+      }).catch(e=>console.warn('confirmation email failed', e));
+    }
 
     document.querySelectorAll('.ct-step').forEach(el=>el.classList.remove('active'));
     document.getElementById('ctStepDone').classList.add('active');
