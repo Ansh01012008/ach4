@@ -19,15 +19,27 @@
 
 <div class="page-wrap">
   <div class="breadcrumb"><a href="index.html">Shop</a> / Track Order</div>
+  <div style="max-width:520px;margin:0 auto 16px;display:flex;gap:8px;">
+    <button class="mini-btn" id="ctTrackTabOrder" onclick="switchTrackTab('order')" style="flex:1;">Track Order</button>
+    <button class="mini-btn" id="ctTrackTabCustom" onclick="switchTrackTab('custom')" style="flex:1;">Track Custom Stitching</button>
+  </div>
   <div class="modal-bg" id="trackModalBg">
     <div class="modal narrow">
-      <div style="padding:34px;">
+      <div style="padding:34px;" id="trackOrderPane">
         <h2 style="margin-bottom:6px;">Track Your Order</h2>
         <p style="font-size:13px;color:#8a7480;margin-bottom:20px;">Enter your Order ID and the phone number used at checkout.</p>
         <div class="field" style="margin-bottom:12px;"><input type="text" id="trackOrderId" placeholder="Order ID e.g. ACH12345678" style="width:100%;padding:11px 12px;border:1px solid var(--stone);border-radius:8px;background:var(--ivory);"></div>
         <div class="field" style="margin-bottom:14px;"><input type="text" id="trackPhone" placeholder="Phone number" style="width:100%;padding:11px 12px;border:1px solid var(--stone);border-radius:8px;background:var(--ivory);"></div>
         <button class="btn full-btn" onclick="runTrackOrder()">Track Order</button>
         <div id="trackResult" style="margin-top:20px;"></div>
+      </div>
+      <div style="padding:34px;display:none;" id="trackCustomPane">
+        <h2 style="margin-bottom:6px;">Track Custom Stitching Request</h2>
+        <p style="font-size:13px;color:#8a7480;margin-bottom:20px;">Enter your Reference ID (e.g. CT12345678) and the phone number you submitted.</p>
+        <div class="field" style="margin-bottom:12px;"><input type="text" id="ctTrackRefId" placeholder="Reference ID e.g. CT12345678" style="width:100%;padding:11px 12px;border:1px solid var(--stone);border-radius:8px;background:var(--ivory);"></div>
+        <div class="field" style="margin-bottom:14px;"><input type="text" id="ctTrackPhone" placeholder="Phone number" style="width:100%;padding:11px 12px;border:1px solid var(--stone);border-radius:8px;background:var(--ivory);"></div>
+        <button class="btn full-btn" onclick="runTrackCustomOrder()">Track Request</button>
+        <div id="ctTrackResult" style="margin-top:20px;"></div>
       </div>
     </div>
   </div>
@@ -51,6 +63,51 @@ injectSharedChrome();
   if(overlayTrack.length) overlayTrack[0].id = 'trackModalBgMini';
 })();
 init();
+
+function switchTrackTab(tab){
+  const isOrder = tab==='order';
+  document.getElementById('trackOrderPane').style.display = isOrder ? '' : 'none';
+  document.getElementById('trackCustomPane').style.display = isOrder ? 'none' : '';
+  document.getElementById('ctTrackTabOrder').style.background = isOrder ? 'var(--blush)' : '';
+  document.getElementById('ctTrackTabCustom').style.background = isOrder ? '' : 'var(--blush)';
+}
+switchTrackTab('order');
+
+const CT_STATUS_STEPS = ['New','Reviewed','Quoted','In Progress','Ready','Delivered'];
+async function runTrackCustomOrder(){
+  const refId = document.getElementById('ctTrackRefId').value.trim();
+  const phone = document.getElementById('ctTrackPhone').value.trim();
+  const resultEl = document.getElementById('ctTrackResult');
+  if(!refId || !phone){ resultEl.innerHTML = `<p style="font-size:13px;color:#b5473a;">Please enter both fields.</p>`; return; }
+  resultEl.innerHTML = `<div class="spinner-sm" style="margin:10px auto;"></div>`;
+  try{
+    const doc = await db.collection('customOrders').doc(refId.toUpperCase()).get();
+    if(!doc.exists || !(doc.data().customer.phone||'').includes(phone.replace(/^\+?91/,''))){
+      resultEl.innerHTML = `<p style="font-size:13px;color:#b5473a;">No matching request found. Check your Reference ID and phone number.</p>`;
+      return;
+    }
+    const r = doc.data();
+    const stepIdx = CT_STATUS_STEPS.indexOf(r.status);
+    const isCancelled = r.status==='Cancelled';
+    resultEl.innerHTML = `
+      <div style="border:1px solid var(--stone);border-radius:12px;padding:16px;">
+        <b>${r.garment}</b> <span style="font-size:11px;color:#8a7480;">— ${refId.toUpperCase()}</span>
+        <div style="font-size:12px;color:#8a7480;margin-top:2px;">${new Date(r.date).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}${r.quotedPrice?` · Quoted ₹${r.quotedPrice}`:''}${r.expectedDelivery?` · Ready by ${new Date(r.expectedDelivery).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}`:''}</div>
+        ${!isCancelled ? `
+        <div style="display:flex;align-items:center;margin-top:14px;">
+          ${CT_STATUS_STEPS.map((s,i)=>`
+            ${i>0?`<div style="flex:1;height:2px;background:${i<=stepIdx?'var(--rose)':'var(--stone)'};"></div>`:''}
+            <div style="width:10px;height:10px;border-radius:50%;flex-shrink:0;background:${i<=stepIdx?'var(--rose)':'var(--stone)'};" title="${s}"></div>
+          `).join('')}
+        </div>
+        <div style="font-size:12px;font-weight:500;margin-top:6px;">${r.status}</div>
+        ` : `<div style="font-size:13px;color:#b5473a;margin-top:10px;">This request was cancelled.</div>`}
+      </div>
+    `;
+  }catch(e){
+    resultEl.innerHTML = `<p style="font-size:13px;color:#b5473a;">Couldn't fetch your request. Please try again.</p>`;
+  }
+}
 </script>
 
 </body>
