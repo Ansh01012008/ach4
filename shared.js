@@ -406,15 +406,24 @@ function notifyMe(productId){
 }
 
 /* CART */
-function addToCart(productId){
-  const sizeEl = document.querySelector('#sizeRow .size-chip.active');
-  const size = sizeEl ? sizeEl.textContent : 'Free Size';
+function addToCart(productId, qtyOverride){
+  const p = products.find(pp=>pp.id===productId);
+  const isFabric = p && p.unit==='meter';
+  let size, qty;
+  if(isFabric){
+    size = 'Per Meter';
+    qty = qtyOverride || 1;
+  } else {
+    const sizeEl = document.querySelector('#sizeRow .size-chip.active');
+    size = sizeEl ? sizeEl.textContent : 'Free Size';
+    qty = 1;
+  }
   const existing = cart.find(c=>c.productId===productId && c.size===size);
-  if(existing){ existing.qty += 1; } else { cart.push({productId, size, qty:1}); }
+  if(existing){ existing.qty += qty; } else { cart.push({productId, size, qty}); }
   saveLS('ach_cart', cart);
   updateCartCount();
   closeModal('pdModalBg');
-  showToast(`Added "${products.find(p=>p.id===productId)?.name || 'item'}" to your bag`);
+  showToast(`Added "${p?.name || 'item'}" to your bag`);
   openCart();
 }
 function updateCartCount(){ document.getElementById('cartCount').textContent = cart.reduce((s,c)=>s+c.qty,0); }
