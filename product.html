@@ -71,11 +71,18 @@ function renderProductPage(){
         <div class="pd-price">${p.mrp>p.price?`<s style="color:#b7a3ae;font-size:16px;margin-right:8px;">${money(p.mrp)}</s>`:''}${money(p.price)} ${settings.showGST?`<span style="font-size:12px;color:#8a7480;">(incl. GST)</span>`:''}</div>
         <p class="pd-desc">${p.desc||''}</p>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-          <label style="margin:0;">Select Size</label>
-          <a onclick="openSizeGuide()" style="font-size:11px;text-decoration:underline;cursor:pointer;color:var(--rose);">Size Guide</a>
+          <label style="margin:0;">${p.unit==='meter' ? 'Meters Needed' : 'Select Size'}</label>
+          ${p.unit!=='meter' ? `<a onclick="openSizeGuide()" style="font-size:11px;text-decoration:underline;cursor:pointer;color:var(--rose);">Size Guide</a>` : ''}
         </div>
-        <div class="size-row" id="sizeRow">${sizes.map((s,i)=>`<div class="size-chip ${i===0?'active':''}" onclick="selectSize(this)">${s}</div>`).join('')}</div>
-        <button class="btn full-btn" onclick="addToCart('${p.id}')" ${p.stock<=0?'disabled':''}>${p.stock<=0?'Out of Stock':'Add to Bag — '+money(p.price)}</button>
+        ${p.unit==='meter' ? `
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+            <button class="mini-btn" onclick="document.getElementById('meterQty').stepDown(); document.getElementById('meterQty').dispatchEvent(new Event('input'));">−</button>
+            <input type="number" id="meterQty" value="1" min="1" step="0.5" style="width:70px;text-align:center;padding:8px;border:1px solid var(--stone);border-radius:8px;" oninput="document.getElementById('meterTotal').textContent = money((this.value||1)*${p.price})">
+            <button class="mini-btn" onclick="document.getElementById('meterQty').stepUp(); document.getElementById('meterQty').dispatchEvent(new Event('input'));">+</button>
+            <span style="font-size:12px;color:#8a7480;">meters × ${money(p.price)}/m = <b id="meterTotal">${money(p.price)}</b></span>
+          </div>
+        ` : `<div class="size-row" id="sizeRow">${sizes.map((s,i)=>`<div class="size-chip ${i===0?'active':''}" onclick="selectSize(this)">${s}</div>`).join('')}</div>`}
+        <button class="btn full-btn" onclick="${p.unit==='meter' ? `addToCart('${p.id}', Number(document.getElementById('meterQty').value)||1)` : `addToCart('${p.id}')`}" ${p.stock<=0?'disabled':''}>${p.stock<=0?'Out of Stock':'Add to Bag — '+money(p.price)+(p.unit==='meter'?'/m':'')}</button>
         ${p.stock<=0?`<div style="margin-top:10px;display:flex;gap:8px;"><input type="email" id="notifyEmail" placeholder="Your email" style="flex:1;padding:9px;border:1px solid var(--stone);border-radius:6px;font-size:12px;"><button class="mini-btn" onclick="notifyMe('${p.id}')">Notify Me</button></div>`:''}
         <div class="stock-note">${p.stock>0? p.stock+' in stock · ships in 2-3 days' : 'Currently out of stock'}</div>
         ${p.stock>0 && p.stock<=5?`<span class="urgency">🔥 Selling fast — only ${p.stock} left</span>`:''}
