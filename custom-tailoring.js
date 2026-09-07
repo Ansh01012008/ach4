@@ -15,12 +15,70 @@ let ctSelectedGarment = null;
 let ctFabricSource = 'customer';
 let ctDesignImages = [];
 let ctCurrentStep = 1;
+let ctMyRequests = [];
+let ctSelectedFabricProduct = null;
+const CT_STATUS_ORDER = ['New','Reviewed','Quoted','In Progress','Ready','Delivered'];
 
 function initCustomTailoringPage(){
   const grid = document.getElementById('ctGarmentGrid');
   grid.innerHTML = Object.keys(GARMENT_FIELDS).map(g=>
     `<div class="ct-garment-opt" data-garment="${g}" onclick="selectGarment('${g}')">${g}</div>`
   ).join('');
+  // Fires once Firebase resolves auth state (defined globally in shared.js's onAuthStateChanged)
+  window.onAuthReady = function(user){
+    if(user) loadMyCustomRequests(user.uid);
+  };
+}
+
+async function loadMyCustomRequests(uid){
+  try{
+    const snap = await db.collection('customOrders').where('uid','==',uid).orderBy('date','desc').limit(10).get();
+    ctMyRequests = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    if(ctMyRequests.length) renderCtHistory();
+  }catch(e){ console.warn('custom order history fetch failed', e); }
+}
+function renderCtHistory(){
+  const section = document.getElementById('ctHistorySection');
+  section.style.display = 'block';
+  section.innerHTML = `
+    <h3 style="margin-bottom:12px;">Your Previous Requests</h3>
+    ${ctMyRequests.map(r=>{
+      const stepIdx = CT_STATUS_ORDER.indexOf(r.status);
+      const isCancelled = r.status === 'Cancelled';
+      return `
+      <div class="ct-history-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <b>${r.garment}</b> <span style="font-size:11px;color:#8a7480;">— ${r.id}</span>
+            <div style="font-size:12px;color:#8a7480;">${new Date(r.date).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}${r.quotedPrice?` · Quoted ₹${r.quotedPrice}`:''}${r.expectedDelivery?` · Ready by ${new Date(r.expectedDelivery).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}`:''}</div>
+          </div>
+          ${!isCancelled && Object.keys(r.measurements||{}).length ? `<button class="mini-btn" onclick='ctReuseMeasurements(${JSON.stringify(r).replace(/'/g,"&apos;")})'>Reuse for New Order</button>` : ''}
+        </div>
+        ${!isCancelled ? `
+        <div class="ct-history-track">
+          ${CT_STATUS_ORDER.map((s,i)=>`
+            ${i>0?`<div class="line ${i<=stepIdx?'done':''}"></div>`:''}
+            <div class="dot ${i<=stepIdx?'done':''}" title="${s}"></div>
+          `).join('')}
+        </div>
+        <div style="font-size:11px;color:#8a7480;margin-top:4px;">${r.status}</div>
+        ` : `<div style="font-size:12px;color:#b5473a;margin-top:8px;">Cancelled</div>`}
+      </div>`;
+    }).join('')}
+  `;
+}
+function ctReuseMeasurements(oldRequest){
+  selectGarment(oldRequest.garment);
+  document.querySelectorAll('.ct-garment-opt').forEach(el=>el.classList.toggle('selected', el.dataset.garment===oldRequest.garment));
+  setTimeout(()=>{
+    Object.entries(oldRequest.measurements||{}).forEach(([k,v])=>{
+      const inp = document.querySelector(`#ctMeasGrid [data-meas="${k}"]`);
+      if(inp) inp.value = v;
+    });
+    showToast('Measurements copied from your previous order — review before submitting.');
+  }, 50);
+  ctGoStep(2);
+  window.scrollTo({top:0, behavior:'smooth'});
 }
 
 function selectGarment(g){
@@ -37,6 +95,39 @@ function selectFabricSource(src){
   document.getElementById('ctFabricCustomer').classList.toggle('selected', src==='customer');
   document.getElementById('ctFabricStore').classList.toggle('selected', src==='store');
   document.getElementById('ctFabricNote').style.display = src==='store' ? 'block' : 'none';
+  const catalogEl = document.getElementById('ctFabricCatalog');
+  if(src==='store'){
+    catalogEl.style.display = 'block';
+    renderFabricCatalog();
+  } else {
+    catalogEl.style.display = 'none';
+    ctSelectedFabricProduct = null;
+  }
+}
+function renderFabricCatalog(){
+  const catalogEl = document.getElementById('ctFabricCatalog');
+  const fabricProducts = products.filter(p => p.unit==='meter' || /fabric|saree/i.test(p.category||''));
+  if(fabricProducts.length===0){
+    catalogEl.innerHTML = `<p style="font-size:12px;color:#8a7480;">Our fabric catalog isn't listed online yet — no problem, we'll show you options in person or over a call.</p>`;
+    return;
+  }
+  catalogEl.innerHTML = `
+    <label style="font-size:13px;font-weight:500;margin-bottom:8px;display:block;">Pick a fabric (optional — you can also decide later)</label>
+    ${fabricProducts.map(p=>`
+      <div class="ct-fabric-item" id="ctFab_${p.id}" onclick="selectFabricProduct('${p.id}')">
+        <span>${p.name} — ${p.category}</span>
+        <b>${money(p.price)}${p.unit==='meter'?'/m':''}</b>
+      </div>
+    `).join('')}
+  `;
+}
+function selectFabricProduct(id){
+  ctSelectedFabricProduct = ctSelectedFabricProduct===id ? null : id;
+  document.querySelectorAll('.ct-fabric-item').forEach(el=>el.classList.toggle('selected', el.id==='ctFab_'+ctSelectedFabricProduct));
+}
+function onProductsLoaded(){
+  // Re-render the fabric picker if it's open and products just finished loading
+  if(document.getElementById('ctFabricCatalog')?.style.display === 'block') renderFabricCatalog();
 }
 
 function resizeImageToBase64(file, maxPx){
@@ -117,7 +208,7 @@ function ctReviewAndGo(){
   document.getElementById('ctReviewCard').innerHTML = `
     <h3 style="margin-bottom:14px;">Review Your Request</h3>
     <div class="ct-review-row"><span>Garment</span><b>${ctSelectedGarment}</b></div>
-    <div class="ct-review-row"><span>Fabric</span><b>${ctFabricSource==='customer'?"My Own Fabric":"ACH Boutique Fabric"}</b></div>
+    <div class="ct-review-row"><span>Fabric</span><b>${ctFabricSource==='customer'?"My Own Fabric":"ACH Boutique Fabric"}${ctSelectedFabricProduct?' — '+products.find(p=>p.id===ctSelectedFabricProduct)?.name:''}</b></div>
     <div class="ct-review-row"><span>Name</span><b>${name}</b></div>
     <div class="ct-review-row"><span>Phone</span><b>${phone}</b></div>
     ${Object.keys(meas).length ? `<div style="margin-top:12px;font-size:12px;color:#8a7480;">Measurements: ${Object.entries(meas).map(([k,v])=>`${k}: ${v}"`).join(', ')}</div>` : `<div style="margin-top:12px;font-size:12px;color:#8a7480;">No measurements entered — we'll confirm at pickup/fitting.</div>`}
@@ -152,6 +243,7 @@ async function submitCustomOrder(){
     id: requestId,
     garment: ctSelectedGarment,
     fabricSource: ctFabricSource,
+    selectedFabric: ctSelectedFabricProduct ? {id: ctSelectedFabricProduct, name: products.find(p=>p.id===ctSelectedFabricProduct)?.name} : null,
     measurements: collectMeasurements(),
     designImages: ctDesignImages,
     notes: document.getElementById('ctNotes').value.trim(),
