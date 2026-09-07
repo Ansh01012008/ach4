@@ -32,6 +32,14 @@
 .ct-upload-thumb .rm{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;border-radius:50%;width:18px;height:18px;font-size:11px;line-height:18px;text-align:center;cursor:pointer;}
 .ct-review-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--stone);font-size:13px;}
 .ct-nav{display:flex;gap:10px;margin-top:20px;}
+.ct-history-card{border:1px solid var(--stone);border-radius:14px;padding:16px 18px;margin-bottom:12px;background:#fff;}
+.ct-history-track{display:flex;align-items:center;margin-top:10px;}
+.ct-history-track .dot{width:10px;height:10px;border-radius:50%;background:var(--stone);flex-shrink:0;}
+.ct-history-track .dot.done{background:var(--rose);}
+.ct-history-track .line{flex:1;height:2px;background:var(--stone);}
+.ct-history-track .line.done{background:var(--rose);}
+.ct-fabric-item{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--stone);border-radius:10px;padding:10px 14px;margin-bottom:8px;cursor:pointer;font-size:13px;}
+.ct-fabric-item.selected{border-color:var(--rose);background:var(--blush);}
 </style>
 </head>
 <body oncontextmenu="return false;">
@@ -45,6 +53,7 @@
 </div>
 
 <div class="ct-wrap">
+  <div id="ctHistorySection" style="display:none;margin-bottom:24px;"></div>
   <div class="ct-progress"><div id="ctp1"></div><div id="ctp2"></div><div id="ctp3"></div><div id="ctp4"></div></div>
 
   <!-- STEP 1: Garment + Fabric -->
@@ -64,6 +73,7 @@
         <div class="radio"></div>
       </div>
       <div id="ctFabricNote" style="font-size:12px;color:#8a7480;margin-top:8px;display:none;">We'll confirm fabric options and pricing with you once we review your request.</div>
+      <div id="ctFabricCatalog" style="display:none;margin-top:16px;"></div>
     </div>
     <div class="ct-nav"><button class="btn full-btn" onclick="ctGoStep(2)">Continue</button></div>
   </div>
