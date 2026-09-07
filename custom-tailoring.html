@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Custom Stitching — ACH Boutique</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+.ct-wrap{max-width:760px;margin:0 auto;padding:30px 24px 90px;}
+.ct-step{display:none;}
+.ct-step.active{display:block;}
+.ct-progress{display:flex;gap:6px;margin-bottom:30px;}
+.ct-progress div{flex:1;height:4px;border-radius:4px;background:var(--stone);}
+.ct-progress div.done{background:var(--rose);}
+.ct-card{border:1px solid var(--stone);border-radius:16px;padding:26px;margin-bottom:18px;background:#fff;}
+.ct-garment-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin-bottom:20px;}
+.ct-garment-opt{border:1px solid var(--stone);border-radius:12px;padding:16px 8px;text-align:center;cursor:pointer;font-size:12px;transition:.15s;}
+.ct-garment-opt.selected{border-color:var(--rose);background:var(--blush);font-weight:500;}
+.ct-meas-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;}
+.ct-meas-grid .field label{font-size:12px;}
+.ct-meas-grid .field input{padding:9px 10px;}
+.ct-fabric-opt{border:1px solid var(--stone);border-radius:12px;padding:16px;margin-bottom:10px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;}
+.ct-fabric-opt.selected{border-color:var(--rose);background:var(--blush);}
+/* Soft deterrents against casual copying — cannot block OS/hardware screenshots */
+.ct-protected{user-select:none;-webkit-user-select:none;}
+.ct-protected img{pointer-events:none;-webkit-touch-callout:none;}
+.ct-upload-grid{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
+.ct-upload-thumb{width:80px;height:80px;border-radius:10px;overflow:hidden;position:relative;border:1px solid var(--stone);}
+.ct-upload-thumb img{width:100%;height:100%;object-fit:cover;}
+.ct-upload-thumb .rm{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;border-radius:50%;width:18px;height:18px;font-size:11px;line-height:18px;text-align:center;cursor:pointer;}
+.ct-review-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--stone);font-size:13px;}
+.ct-nav{display:flex;gap:10px;margin-top:20px;}
+</style>
+</head>
+<body oncontextmenu="return false;">
+
+<div id="chrome-header"></div>
+
+<div class="page-wrap" style="padding-bottom:0;">
+  <div class="breadcrumb"><a href="index.html">Shop</a> / Custom Stitching</div>
+  <h1 class="page-title">Custom Stitching Request</h1>
+  <p style="font-size:13px;color:#8a7480;margin-bottom:20px;">Tell us what you'd like made, share your measurements and a reference picture, and we'll quote you a price and delivery date. Designs and measurements shared here are for our internal use only.</p>
+</div>
+
+<div class="ct-wrap">
+  <div class="ct-progress"><div id="ctp1"></div><div id="ctp2"></div><div id="ctp3"></div><div id="ctp4"></div></div>
+
+  <!-- STEP 1: Garment + Fabric -->
+  <div class="ct-step active" id="ctStep1">
+    <div class="ct-card">
+      <h3 style="margin-bottom:14px;">What would you like stitched?</h3>
+      <div class="ct-garment-grid" id="ctGarmentGrid"></div>
+    </div>
+    <div class="ct-card">
+      <h3 style="margin-bottom:14px;">Fabric</h3>
+      <div class="ct-fabric-opt selected" id="ctFabricCustomer" onclick="selectFabricSource('customer')">
+        <div><b>My Own Fabric</b><div style="font-size:12px;color:#8a7480;">You'll provide/drop off the fabric</div></div>
+        <div class="radio"></div>
+      </div>
+      <div class="ct-fabric-opt" id="ctFabricStore" onclick="selectFabricSource('store')">
+        <div><b>Use ACH Boutique Fabric</b><div style="font-size:12px;color:#8a7480;">We'll select and price fabric for you</div></div>
+        <div class="radio"></div>
+      </div>
+      <div id="ctFabricNote" style="font-size:12px;color:#8a7480;margin-top:8px;display:none;">We'll confirm fabric options and pricing with you once we review your request.</div>
+    </div>
+    <div class="ct-nav"><button class="btn full-btn" onclick="ctGoStep(2)">Continue</button></div>
+  </div>
+
+  <!-- STEP 2: Measurements + Design Reference -->
+  <div class="ct-step" id="ctStep2">
+    <div class="ct-card">
+      <h3 style="margin-bottom:6px;">Measurements (inches)</h3>
+      <p style="font-size:12px;color:#8a7480;margin-bottom:16px;">Not sure of exact numbers? Leave blank and mention it in notes — we'll confirm at pickup/fitting.</p>
+      <div class="ct-meas-grid" id="ctMeasGrid"></div>
+    </div>
+    <div class="ct-card ct-protected">
+      <h3 style="margin-bottom:6px;">Design Reference (optional)</h3>
+      <p style="font-size:12px;color:#8a7480;margin-bottom:12px;">Upload a photo of the design/style you have in mind.</p>
+      <div class="ct-upload-grid" id="ctUploadGrid"></div>
+      <input type="file" id="ctDesignInput" accept="image/*" multiple style="display:none" onchange="handleCtDesignUpload(event)">
+      <button class="mini-btn" onclick="document.getElementById('ctDesignInput').click()">+ Add Photo</button>
+      <div id="ctUploadStatus" style="font-size:11px;color:#8a7480;margin-top:6px;"></div>
+    </div>
+    <div class="ct-card">
+      <label style="font-size:13px;font-weight:500;margin-bottom:8px;display:block;">Notes / Special Requests</label>
+      <textarea id="ctNotes" rows="3" style="width:100%;padding:11px;border:1px solid var(--stone);border-radius:8px;background:var(--ivory);font-family:inherit;"></textarea>
+    </div>
+    <div class="ct-nav">
+      <button class="btn btn-outline" style="flex:1;" onclick="ctGoStep(1)">Back</button>
+      <button class="btn" style="flex:2;" onclick="ctGoStep(3)">Continue</button>
+    </div>
+  </div>
+
+  <!-- STEP 3: Your Details -->
+  <div class="ct-step" id="ctStep3">
+    <div class="ct-card">
+      <h3 style="margin-bottom:14px;">Your Details</h3>
+      <div class="form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="field full"><label>Full Name</label><input id="ctFullName" style="width:100%;padding:10px;border:1px solid var(--stone);border-radius:8px;"></div>
+        <div class="field"><label>Phone</label><input id="ctFullPhone" type="tel" maxlength="10" oninput="this.value=this.value.replace(/\D/g,'')" style="width:100%;padding:10px;border:1px solid var(--stone);border-radius:8px;"></div>
+        <div class="field"><label>Email (optional)</label><input id="ctFullEmail" type="email" style="width:100%;padding:10px;border:1px solid var(--stone);border-radius:8px;"></div>
+        <div class="field full"><label>Address</label><input id="ctFullAddr" style="width:100%;padding:10px;border:1px solid var(--stone);border-radius:8px;"></div>
+      </div>
+    </div>
+    <div class="ct-nav">
+      <button class="btn btn-outline" style="flex:1;" onclick="ctGoStep(2)">Back</button>
+      <button class="btn" style="flex:2;" onclick="ctReviewAndGo()">Review Request</button>
+    </div>
+  </div>
+
+  <!-- STEP 4: Review + Submit -->
+  <div class="ct-step" id="ctStep4">
+    <div class="ct-card ct-protected" id="ctReviewCard"></div>
+    <div class="ct-card">
+      <h3 style="margin-bottom:10px;">Token Advance (optional)</h3>
+      <p style="font-size:12px;color:#8a7480;margin-bottom:14px;">You can pay a token advance now via UPI, or skip and settle the full amount once we confirm your quote.</p>
+      <div style="display:flex;gap:10px;">
+        <input type="number" id="ctAdvanceAmt" placeholder="Amount (₹, optional)" style="flex:1;padding:10px;border:1px solid var(--stone);border-radius:8px;">
+        <button class="btn" style="flex:1;" onclick="ctPayAdvance()">Pay via UPI</button>
+      </div>
+      <div id="ctAdvanceStatus" style="font-size:12px;color:var(--moss);margin-top:8px;"></div>
+    </div>
+    <div class="ct-nav">
+      <button class="btn btn-outline" style="flex:1;" onclick="ctGoStep(3)">Back</button>
+      <button class="btn" style="flex:2;" id="ctSubmitBtn" onclick="submitCustomOrder()">Submit Request</button>
+    </div>
+    <p style="text-align:center;margin-top:16px;font-size:12px;color:#8a7480;">Prefer to talk it through first? <a href="contact.html" style="color:var(--rose);text-decoration:underline;">Consult with a Designer</a> instead.</p>
+  </div>
+
+  <!-- STEP 5: Done -->
+  <div class="ct-step" id="ctStepDone">
+    <div class="ct-card" style="text-align:center;">
+      <div style="font-size:40px;margin-bottom:12px;">✓</div>
+      <h2 style="margin-bottom:8px;">Request Sent!</h2>
+      <p style="font-size:13px;color:#8a7480;margin-bottom:20px;">Reference ID: <b id="ctDoneId"></b><br>We'll review your request and reach out with a quote and expected delivery date.</p>
+      <a href="index.html" class="btn">Continue Shopping</a>
+    </div>
+  </div>
+</div>
+
+<div id="chrome-footer"></div>
+<div id="chrome-overlays"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>emailjs.init('I4iWZBJq_43MymLwS');</script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="shared.js"></script>
+<script src="chrome.js"></script>
+<script src="custom-tailoring.js"></script>
+<script>
+injectSharedChrome();
+init();
+initCustomTailoringPage();
+</script>
+
+</body>
+</html>
