@@ -56,7 +56,7 @@
   <div id="ctHistorySection" style="display:none;margin-bottom:24px;"></div>
   <div class="ct-progress"><div id="ctp1"></div><div id="ctp2"></div><div id="ctp3"></div><div id="ctp4"></div></div>
 
-  <!-- STEP 1: Garment + Fabric-->
+  <!-- STEP 1: Garment + Fabric -->
   <div class="ct-step active" id="ctStep1">
     <div class="ct-card">
       <h3 style="margin-bottom:14px;">What would you like stitched?</h3>
@@ -130,6 +130,11 @@
         <input type="number" id="ctAdvanceAmt" placeholder="Amount (₹, optional)" style="flex:1;padding:10px;border:1px solid var(--stone);border-radius:8px;">
         <button class="btn" style="flex:1;" onclick="ctPayAdvance()">Pay via UPI</button>
       </div>
+      <div id="ctAdvanceQrWrap" style="display:none;text-align:center;margin-top:16px;padding:16px;border:1px solid var(--stone);border-radius:12px;">
+        <img id="ctAdvanceQrImg" style="width:180px;height:180px;">
+        <div style="font-size:12px;color:#8a7480;margin-top:8px;">Scan with any UPI app, then tap below once paid.</div>
+        <button class="mini-btn" style="margin-top:10px;" onclick="ctConfirmAdvancePaid()">I've Paid</button>
+      </div>
       <div id="ctAdvanceStatus" style="font-size:12px;color:var(--moss);margin-top:8px;"></div>
     </div>
     <div class="ct-nav">
@@ -144,7 +149,7 @@
     <div class="ct-card" style="text-align:center;">
       <div style="font-size:40px;margin-bottom:12px;">✓</div>
       <h2 style="margin-bottom:8px;">Request Sent!</h2>
-      <p style="font-size:13px;color:#8a7480;margin-bottom:20px;">Reference ID: <b id="ctDoneId"></b><br>We'll review your request and reach out with a quote and expected delivery date.</p>
+      <p style="font-size:13px;color:#8a7480;margin-bottom:20px;">Reference ID: <b id="ctDoneId"></b><br>We'll review your request and reach out with a quote and expected delivery date.<br>Track progress anytime from <a href="track.html" style="color:var(--rose);text-decoration:underline;">Track Order</a>.</p>
       <a href="index.html" class="btn">Continue Shopping</a>
     </div>
   </div>
