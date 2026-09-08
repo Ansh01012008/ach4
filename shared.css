@@ -299,7 +299,19 @@ footer{background:var(--charcoal);color:#e8dae1;padding:56px 28px 30px;}
   .form-grid{grid-template-columns:1fr;}
   .checkout-shell{padding:26px 20px;}
   .stepper{font-size:10px;}
+
+  /* Mobile header: hamburger menu + tighter icon row so nothing overflows */
+  .nav-wrap{padding:14px 16px;flex-wrap:nowrap;}
+  .logo{font-size:19px;}
+  .nav-icons{gap:10px;}
+  .icon-btn{font-size:17px;padding:3px;}
+  .mobile-menu-btn{display:flex !important;}
+  .mobile-nav-panel{display:none;flex-direction:column;background:var(--white);border-top:1px solid var(--stone);padding:6px 20px 14px;}
+  .mobile-nav-panel.open{display:flex;}
+  .mobile-nav-panel a{padding:12px 0;border-bottom:1px solid var(--stone);font-size:15px;}
+  .mobile-nav-panel a:last-child{border-bottom:none;}
 }
+.mobile-menu-btn{display:none;background:none;border:none;font-size:22px;padding:4px 8px 4px 0;cursor:pointer;}
 
 /* ---- AUTH MODAL ---- */
 .auth-modal-bg{position:fixed;inset:0;background:rgba(35,32,25,0.55);z-index:120;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .25s;}
